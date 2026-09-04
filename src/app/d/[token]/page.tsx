@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Cloud, Download, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Download, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils';
 import Link from 'next/link';
+import { BrandLogo } from '@/components/BrandLogo';
 
 interface ShareInfo {
   fileName: string;
@@ -130,9 +131,8 @@ export default function DownloadPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-medium rounded-xl transition-all shadow-lg"
             >
-              <Cloud className="h-5 w-5" />
               Go to CloudShare
             </Link>
           </div>
@@ -142,14 +142,11 @@ export default function DownloadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-violet-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Cloud className="h-8 w-8 text-brand-600" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              CloudShare
-            </span>
+          <Link href="/">
+            <BrandLogo size="md" />
           </Link>
         </div>
 
