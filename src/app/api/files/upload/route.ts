@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
-import { getPresignedUploadUrl, getPublicUrl } from '@/lib/s3';
 
 export async function POST(req: Request) {
   try {
@@ -43,11 +42,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const hasR2 = process.env.AWS_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME;
+    const hasSupabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY;
 
-    if (!hasR2) {
+    if (!hasSupabase) {
       return NextResponse.json(
-        { success: false, error: 'R2 storage not configured' },
+        { success: false, error: 'Supabase storage not configured' },
         { status: 500 }
       );
     }
@@ -58,24 +57,20 @@ export async function POST(req: Request) {
     const filename = fileId + extPart;
     const storagePath = session.user.id + '/' + filename;
 
-    const uploadUrl = await getPresignedUploadUrl(storagePath, fileType || 'application/octet-stream', 600);
-
-    const publicUrl = getPublicUrl(storagePath);
-
     return NextResponse.json({
       success: true,
       data: {
-        uploadUrl,
         storagePath,
-        publicUrl,
-        fileId,
         filename,
+        supabaseUrl: process.env.SUPABASE_URL,
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+        bucket: process.env.SUPABASE_BUCKET || 'cloudshare-files',
       },
     });
   } catch (error) {
-    console.error('Get presigned URL error:', error);
+    console.error('Get upload info error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to get upload URL' },
+      { success: false, error: 'Failed to get upload info' },
       { status: 500 }
     );
   }

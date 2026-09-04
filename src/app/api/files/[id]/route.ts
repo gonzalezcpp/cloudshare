@@ -35,7 +35,12 @@ export async function DELETE(
       );
     }
 
-    if (!file.storagePath.startsWith('db:') && !file.storagePath.startsWith('ut:')) {
+    if (file.storagePath.startsWith('db:') || file.storagePath.startsWith('ut:')) {
+      // db: and ut: files don't need external deletion
+    } else if (process.env.SUPABASE_URL && file.storagePath.includes('/')) {
+      const { deleteFromSupabase } = await import('@/lib/storage');
+      await deleteFromSupabase(file.storagePath);
+    } else if (process.env.AWS_ACCESS_KEY_ID) {
       const { deleteFromS3 } = await import('@/lib/s3');
       await deleteFromS3(file.storagePath);
     }

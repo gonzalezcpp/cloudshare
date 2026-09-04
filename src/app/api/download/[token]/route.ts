@@ -145,6 +145,7 @@ export async function POST(
 
     const isDbStorage = shareLink.file.storagePath.startsWith('db:');
     const isUploadthing = shareLink.file.storagePath.startsWith('ut:');
+    const isSupabase = !isDbStorage && !isUploadthing && shareLink.file.storagePath.includes('/');
 
     if (isUploadthing) {
       const fileKey = shareLink.file.storagePath.replace('ut:', '');
@@ -179,6 +180,19 @@ export async function POST(
         success: true,
         data: {
           downloadUrl: dataUrl,
+          fileName: shareLink.file.originalName,
+        },
+      });
+    }
+
+    if (isSupabase) {
+      const { getSupabasePublicUrl } = await import('@/lib/storage');
+      const downloadUrl = getSupabasePublicUrl(shareLink.file.storagePath);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          downloadUrl,
           fileName: shareLink.file.originalName,
         },
       });

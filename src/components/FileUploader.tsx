@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { createClient } from '@supabase/supabase-js';
 import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -35,7 +36,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
     ]);
 
     try {
-      const presignRes = await fetch('/api/files/upload', {
+      const infoRes = await fetch('/api/files/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -47,46 +48,36 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
         }),
       });
 
-      const presignData = await presignRes.json();
+      const infoData = await infoRes.json();
 
-      if (!presignData.success) {
+      if (!infoData.success) {
         setUploads((prev) =>
           prev.map((u) =>
-            u.fileId === fileId ? { ...u, status: 'error', error: presignData.error } : u
+            u.fileId === fileId ? { ...u, status: 'error', error: infoData.error } : u
           )
         );
         return;
       }
 
-      const { uploadUrl, storagePath, originalName } = presignData.data;
+      const { storagePath, supabaseUrl, supabaseAnonKey, bucket } = infoData.data;
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            setUploads((prev) =>
-              prev.map((u) =>
-                u.fileId === fileId ? { ...u, progress: pct } : u
-              )
-            );
-          }
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: false,
         });
 
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error('Upload failed'));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.send(file);
-      });
+      if (uploadError) {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.fileId === fileId ? { ...u, status: 'error', error: uploadError.message } : u
+          )
+        );
+        return;
+      }
 
       const confirmRes = await fetch('/api/files/upload/confirm', {
         method: 'POST',
@@ -175,7 +166,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
               Drag & drop files here, or click to select
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Up to 64MB per file
+              Up to 50MB per file
             </p>
           </>
         )}
