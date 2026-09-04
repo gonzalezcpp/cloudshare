@@ -184,8 +184,8 @@ export async function POST(
       });
     }
 
-    const { getPresignedDownloadUrl } = await import('@/lib/s3');
-    const downloadUrl = await getPresignedDownloadUrl(shareLink.file.storagePath);
+    const { getPublicUrl } = await import('@/lib/s3');
+    const downloadUrl = getPublicUrl(shareLink.file.storagePath);
 
     return NextResponse.json({
       success: true,

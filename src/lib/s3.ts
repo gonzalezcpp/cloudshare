@@ -15,15 +15,44 @@ function getS3Client(): S3Client {
     }
 
     _s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'us-east-1',
+      region: process.env.AWS_REGION || 'auto',
       endpoint: process.env.S3_ENDPOINT || undefined,
       credentials: { accessKeyId, secretAccessKey },
+      forcePathStyle: true,
     });
   }
   return _s3Client;
 }
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
+
+export function getPublicUrl(key: string): string {
+  const publicDomain = process.env.S3_PUBLIC_DOMAIN;
+  if (publicDomain) {
+    return `${publicDomain}/${key}`;
+  }
+  return `https://${BUCKET_NAME}.r2.cloudflarestorage.com/${key}`;
+}
+
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  if (!BUCKET_NAME) {
+    throw new Error('S3_BUCKET_NAME environment variable is not set.');
+  }
+  const client = getS3Client();
+  return getSignedUrl(
+    client,
+    new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn }
+  );
+}
 
 export async function uploadToS3(
   key: string,

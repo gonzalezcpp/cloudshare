@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { getPresignedUploadUrl, getPublicUrl } from '@/lib/s3';
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +16,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const folderId = formData.get('folderId') as string | null;
+    const { fileName, fileSize, fileType, folderId } = await req.json();
 
-    if (!file) {
+    if (!fileName || !fileSize) {
       return NextResponse.json(
-        { success: false, error: 'No file provided' },
+        { success: false, error: 'Missing fileName or fileSize' },
         { status: 400 }
       );
     }
@@ -37,16 +36,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const fileSize = file.size;
-    const MAX_SIZE = 4 * 1024 * 1024; // 4MB limit for Vercel serverless
-
-    if (fileSize > MAX_SIZE) {
-      return NextResponse.json(
-        { success: false, error: 'File too large. Maximum size is 4MB. For larger files, Cloudflare R2 storage is required.' },
-        { status: 400 }
-      );
-    }
-
     if (user.storageUsed + BigInt(fileSize) > user.storageLimit) {
       return NextResponse.json(
         { success: false, error: 'Storage limit exceeded' },
@@ -54,57 +43,39 @@ export async function POST(req: Request) {
       );
     }
 
+    const hasR2 = process.env.AWS_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME;
+
+    if (!hasR2) {
+      return NextResponse.json(
+        { success: false, error: 'R2 storage not configured' },
+        { status: 500 }
+      );
+    }
+
     const fileId = uuidv4();
-    const ext = file.name.split('.').pop() || '';
+    const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
     const extPart = ext ? '.' + ext : '';
     const filename = fileId + extPart;
     const storagePath = session.user.id + '/' + filename;
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadUrl = await getPresignedUploadUrl(storagePath, fileType || 'application/octet-stream', 600);
 
-    const hasS3 = process.env.AWS_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME;
-
-    if (hasS3) {
-      const { uploadToS3 } = await import('@/lib/s3');
-      await uploadToS3(storagePath, buffer, file.type);
-    }
-
-    const dbFile = await prisma.file.create({
-      data: {
-        ownerId: session.user.id,
-        filename: filename,
-        originalName: file.name,
-        storagePath: hasS3 ? storagePath : 'db:' + fileId,
-        fileData: hasS3 ? null : buffer,
-        size: fileSize,
-        mimeType: file.type || 'application/octet-stream',
-        folderId: folderId || null,
-      },
-    });
-
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        storageUsed: {
-          increment: BigInt(fileSize),
-        },
-      },
-    });
+    const publicUrl = getPublicUrl(storagePath);
 
     return NextResponse.json({
       success: true,
       data: {
-        id: dbFile.id,
-        filename: dbFile.filename,
-        originalName: dbFile.originalName,
-        size: Number(dbFile.size),
-        mimeType: dbFile.mimeType,
+        uploadUrl,
+        storagePath,
+        publicUrl,
+        fileId,
+        filename,
       },
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Get presigned URL error:', error);
     return NextResponse.json(
-      { success: false, error: 'Upload failed' },
+      { success: false, error: 'Failed to get upload URL' },
       { status: 500 }
     );
   }

@@ -1,14 +1,9 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useDropzone } from '@uploadthing/react';
-import {
-  generateClientDropzoneAccept,
-  generatePermittedFileTypes,
-} from 'uploadthing/client';
+import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
-import { useUploadThing } from '@/lib/uploadthing';
 import { useRouter } from 'next/navigation';
 
 interface FileUploaderProps {
@@ -18,7 +13,6 @@ interface FileUploaderProps {
 
 export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) {
   const router = useRouter();
-  const [files, setFiles] = useState<File[]>([]);
   const [uploads, setUploads] = useState<{
     fileId: string;
     filename: string;
@@ -27,65 +21,120 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
     error?: string;
   }[]>([]);
 
-  const { startUpload, routeConfig } = useUploadThing('fileUploader', {
-    onClientUploadComplete: (res) => {
-      setUploads((prev) =>
-        prev.map((u) =>
-          u.status === 'uploading'
-            ? { ...u, status: 'completed', progress: 100 }
-            : u
-        )
-      );
-      setFiles([]);
-      onUploadComplete?.();
-      setTimeout(() => router.refresh(), 2000);
-    },
-    onUploadError: (error: Error) => {
-      setUploads((prev) =>
-        prev.map((u) =>
-          u.status === 'uploading'
-            ? { ...u, status: 'error', error: error.message }
-            : u
-        )
-      );
-    },
-    onUploadProgress: (progress: number) => {
-      setUploads((prev) => {
-        const uploading = prev.find((u) => u.status === 'uploading');
-        if (uploading) {
-          return prev.map((u) =>
-            u.fileId === uploading.fileId ? { ...u, progress } : u
-          );
-        }
-        return prev;
+  const uploadFile = async (file: File) => {
+    const fileId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    setUploads((prev) => [
+      ...prev,
+      {
+        fileId,
+        filename: file.name,
+        progress: 0,
+        status: 'uploading',
+      },
+    ]);
+
+    try {
+      const presignRes = await fetch('/api/files/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          folderId,
+        }),
       });
-    },
-  });
+
+      const presignData = await presignRes.json();
+
+      if (!presignData.success) {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.fileId === fileId ? { ...u, status: 'error', error: presignData.error } : u
+          )
+        );
+        return;
+      }
+
+      const { uploadUrl, storagePath, originalName } = presignData.data;
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.fileId === fileId ? { ...u, progress: pct } : u
+              )
+            );
+          }
+        });
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error('Upload failed'));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.send(file);
+      });
+
+      const confirmRes = await fetch('/api/files/upload/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          storagePath,
+          originalName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          folderId,
+        }),
+      });
+
+      const confirmData = await confirmRes.json();
+
+      if (confirmData.success) {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.fileId === fileId ? { ...u, status: 'completed', progress: 100 } : u
+          )
+        );
+      } else {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.fileId === fileId ? { ...u, status: 'error', error: confirmData.error } : u
+          )
+        );
+      }
+    } catch (e) {
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.fileId === fileId ? { ...u, status: 'error', error: 'Upload failed' } : u
+        )
+      );
+    }
+  };
 
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      setFiles(acceptedFiles);
-
+    async (acceptedFiles: File[]) => {
       for (const file of acceptedFiles) {
-        const fileId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        setUploads((prev) => [
-          ...prev,
-          {
-            fileId,
-            filename: file.name,
-            progress: 0,
-            status: 'uploading' as const,
-          },
-        ]);
+        await uploadFile(file);
       }
+      onUploadComplete?.();
+      router.refresh();
     },
-    []
+    [folderId, onUploadComplete, router]
   );
-
-  const handleUpload = async () => {
-    if (files.length === 0) return;
-    await startUpload(files);
-  };
 
   const removeUpload = (fileId: string) => {
     setUploads((prev) => prev.filter((u) => u.fileId !== fileId));
@@ -93,9 +142,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: generateClientDropzoneAccept(
-      generatePermittedFileTypes(routeConfig).fileTypes
-    ),
+    multiple: true,
   });
 
   return (
@@ -133,15 +180,6 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
           </>
         )}
       </div>
-
-      {files.length > 0 && uploads.some((u) => u.status === 'uploading') && (
-        <button
-          onClick={handleUpload}
-          className="w-full py-2 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors"
-        >
-          Upload {files.length} file{files.length > 1 ? 's' : ''}
-        </button>
-      )}
 
       {uploads.length > 0 && (
         <div className="space-y-2">
