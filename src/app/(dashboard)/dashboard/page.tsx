@@ -9,6 +9,7 @@ import {
   HardDrive,
   TrendingUp,
   Upload,
+  ArrowUpRight,
 } from 'lucide-react';
 import { StorageUsage } from '@/components/StorageUsage';
 import { formatDate, formatFileSize } from '@/lib/utils';
@@ -42,95 +43,50 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent" />
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900" />
       </div>
     );
   }
+
+  const statCards = [
+    { label: 'Total Files', value: stats?.totalFiles || 0, icon: FolderOpen, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Shared Links', value: stats?.totalSharedLinks || 0, icon: Share2, color: 'bg-green-50 text-green-600' },
+    { label: 'Downloads', value: stats?.totalDownloads || 0, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Storage Used', value: formatFileSize(Number(stats?.storageUsed || 0)), icon: HardDrive, color: 'bg-amber-50 text-amber-600' },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Welcome back, <span className="bg-gradient-to-r from-cyan-500 to-violet-500 bg-clip-text text-transparent">{session?.user?.name || 'User'}</span>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {session?.user?.name || 'User'}
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-gray-500 mt-1 text-sm">
             Here&apos;s an overview of your files
           </p>
         </div>
         <Link
           href="/files"
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-xl"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
         >
-          <Upload className="h-5 w-5" />
-          Upload Files
+          <Upload className="h-4 w-4" />
+          Upload
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/50 dark:shadow-none hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Total Files
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats?.totalFiles || 0}
-              </p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {statCards.map((card) => (
+          <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-500">{card.label}</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.color}`}>
+                <card.icon className="h-4 w-4" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
-              <FolderOpen className="h-6 w-6 text-white" />
-            </div>
+            <p className="text-2xl font-bold text-gray-900">{card.value}</p>
           </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/50 dark:shadow-none hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Shared Links
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats?.totalDownloads || 0}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/25">
-              <Share2 className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/50 dark:shadow-none hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Downloads
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats?.totalDownloads || 0}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <TrendingUp className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/50 dark:shadow-none hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Storage Used
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatFileSize(Number(stats?.storageUsed || 0))}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/25">
-              <HardDrive className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       <StorageUsage
@@ -138,51 +94,54 @@ export default function DashboardPage() {
         limit={stats?.storageLimit || 10737418240}
       />
 
-      <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-200/50 dark:shadow-none">
-        <div className="p-5 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Recent Files
-          </h2>
+      <div className="bg-white border border-gray-200 rounded-xl">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Recent Files</h2>
         </div>
         <div className="p-4">
           {recentFiles.length > 0 ? (
-            <div className="space-y-2">
+            <div className="divide-y divide-gray-100">
               {recentFiles.map((file) => (
                 <div
                   key={file.id}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl transition-colors"
+                  className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 rounded-xl flex items-center justify-center">
-                      <FolderOpen className="h-5 w-5 text-cyan-500" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FolderOpen className="h-4 w-4 text-gray-500" />
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
                         {file.originalName}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatFileSize(Number(file.size))} &middot;{' '}
-                        {formatDate(file.createdAt)}
+                      <p className="text-xs text-gray-400">
+                        {formatFileSize(Number(file.size))} &middot; {formatDate(file.createdAt)}
                       </p>
                     </div>
                   </div>
                   <Link
                     href="/files"
-                    className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 flex-shrink-0 ml-4"
                   >
                     View
+                    <ArrowUpRight className="h-3 w-3" />
                   </Link>
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <FolderOpen className="h-8 w-8 text-gray-400" />
-              </div>
-              <p className="text-gray-500 dark:text-gray-400 font-medium">
-                No files yet. Upload your first file!
+              <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">
+                No files yet
               </p>
+              <Link
+                href="/files"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-gray-900 hover:underline"
+              >
+                Upload your first file
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           )}
         </div>

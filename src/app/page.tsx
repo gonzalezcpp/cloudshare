@@ -4,105 +4,98 @@ import { BrandLogo } from '@/components/BrandLogo';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-violet-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <header className="container mx-auto px-4 py-6">
-        <nav className="flex items-center justify-between">
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-gray-100">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/">
             <BrandLogo size="md" />
           </Link>
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/signup"
-              className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-cyan-500/25"
+              className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
             >
               Get started
             </Link>
           </div>
-        </nav>
+        </div>
       </header>
 
-      <main className="container mx-auto px-4 py-20">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-50 dark:bg-cyan-900/20 rounded-full text-sm font-medium text-cyan-700 dark:text-cyan-300 mb-6">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Free &middot; No credit card required
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-            Secure file sharing{' '}
-            <span className="bg-gradient-to-r from-cyan-500 to-violet-500 bg-clip-text text-transparent">
-              made simple
-            </span>
+      <main className="container mx-auto px-6">
+        <div className="max-w-2xl mx-auto text-center pt-32 pb-24">
+          <h1 className="text-[3.5rem] leading-[1.1] font-bold text-gray-900 tracking-tight">
+            Store files.
+            <br />
+            Share them.
+            <br />
+            <span className="text-gray-400">Keep them safe.</span>
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 leading-relaxed">
-            Store, manage, and share your files with optional PIN protection.
-            Your files, your control.
+          <p className="text-lg text-gray-500 mt-6 max-w-md mx-auto leading-relaxed">
+            Upload, organize, and share files with optional PIN-protected links. 
+            Simple and secure.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex items-center gap-3 justify-center mt-10">
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-xl hover:shadow-cyan-500/30"
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
             >
               Start for free
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold rounded-xl transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-600 border border-gray-300 hover:border-gray-400 rounded-lg transition-colors"
             >
               Sign in
             </Link>
           </div>
         </div>
 
-        <div className="mt-24 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          <div className="group bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-7 shadow-lg shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center mb-5 shadow-lg shadow-cyan-500/25 group-hover:scale-110 transition-transform">
-              <HardDrive className="h-6 w-6 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+        <div className="grid md:grid-cols-3 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-4xl mx-auto mb-24">
+          <div className="bg-white p-8">
+            <HardDrive className="h-5 w-5 text-gray-900 mb-4" />
+            <h3 className="font-semibold text-gray-900 mb-1.5">
               Cloud Storage
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-              Store your files securely in the cloud with fast global CDN delivery.
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Files stored on global CDN for fast access from anywhere.
             </p>
           </div>
 
-          <div className="group bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-7 shadow-lg shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mb-5 shadow-lg shadow-green-500/25 group-hover:scale-110 transition-transform">
-              <Share2 className="h-6 w-6 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-              Easy Sharing
+          <div className="bg-white p-8">
+            <Share2 className="h-5 w-5 text-gray-900 mb-4" />
+            <h3 className="font-semibold text-gray-900 mb-1.5">
+              Share Links
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-              Share files with anyone using secure links. No account required for downloads.
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Generate shareable links. No account needed to download.
             </p>
           </div>
 
-          <div className="group bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-7 shadow-lg shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center mb-5 shadow-lg shadow-violet-500/25 group-hover:scale-110 transition-transform">
-              <Shield className="h-6 w-6 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+          <div className="bg-white p-8">
+            <Shield className="h-5 w-5 text-gray-900 mb-4" />
+            <h3 className="font-semibold text-gray-900 mb-1.5">
               PIN Protection
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-              Add an extra layer of security with optional 6-character PIN protection.
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Optional 6-character PIN for extra security on sensitive files.
             </p>
           </div>
         </div>
       </main>
 
-      <footer className="container mx-auto px-4 py-8 mt-20 border-t border-gray-200/60 dark:border-gray-800/60">
-        <p className="text-center text-gray-500 dark:text-gray-500 text-sm">
-          &copy; 2026 <span className="text-cyan-500 font-medium">Cloud</span><span className="text-violet-500 font-medium">Share</span>. Secure file storage and sharing.
-        </p>
+      <footer className="border-t border-gray-100">
+        <div className="container mx-auto px-6 py-6">
+          <p className="text-sm text-gray-400">
+            &copy; 2026 <span className="font-medium" style={{ color: '#38bdf8' }}>Cloud</span><span className="font-medium" style={{ color: '#a78bfa' }}>Share</span>
+          </p>
+        </div>
       </footer>
     </div>
   );

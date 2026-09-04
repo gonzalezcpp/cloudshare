@@ -111,27 +111,27 @@ export default function DownloadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </div>
     );
   }
 
   if (error && !shareInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="bg-white rounded-xl border border-gray-200 p-8">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-6 w-6 text-red-500" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-lg font-bold text-gray-900 mb-1">
               Link Invalid
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+            <p className="text-sm text-gray-500 mb-6">{error}</p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white font-medium rounded-xl transition-all shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               Go to CloudShare
             </Link>
@@ -142,36 +142,38 @@ export default function DownloadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-violet-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
           <Link href="/">
             <BrandLogo size="md" />
           </Link>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-6">
-            <div className="text-5xl mb-4">📁</div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="text-center mb-5">
+            <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Download className="h-6 w-6 text-gray-500" />
+            </div>
+            <h1 className="text-base font-bold text-gray-900 mb-0.5">
               {shareInfo?.fileName}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-400">
               {formatFileSize(shareInfo?.fileSize || 0)}
             </p>
           </div>
 
           {shareInfo?.pinProtected && (
-            <div className="mb-6">
-              <div className="flex items-center justify-center gap-2 mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-sm text-yellow-700 dark:text-yellow-400">
-                  This file is protected
+            <div className="mb-5">
+              <div className="flex items-center justify-center gap-1.5 mb-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <Shield className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">
+                  PIN protected
                 </span>
               </div>
 
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Enter the 6-character Secret PIN
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Enter 6-character PIN
               </label>
               <input
                 type="password"
@@ -179,12 +181,12 @@ export default function DownloadPage() {
                 onChange={(e) => setPin(e.target.value)}
                 maxLength={6}
                 disabled={locked}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-center text-2xl tracking-[0.5em]"
-                placeholder="••••••"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-center font-mono text-xl tracking-[0.4em]"
+                placeholder="------"
                 onKeyDown={(e) => e.key === 'Enter' && handleDownload()}
               />
               {attempts > 0 && !locked && (
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1.5 text-xs text-gray-400">
                   {5 - attempts} attempts remaining
                 </p>
               )}
@@ -192,33 +194,32 @@ export default function DownloadPage() {
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-600">{error}</p>
             </div>
           )}
 
           <button
             onClick={handleDownload}
             disabled={verifying || locked || (shareInfo?.pinProtected && pin.length !== 6)}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             {verifying ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Verifying...
               </>
             ) : (
               <>
-                <Download className="h-5 w-5" />
-                Verify & Download
+                <Download className="h-4 w-4" />
+                Download
               </>
             )}
           </button>
 
           {shareInfo?.expiresAt && (
-            <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
-              This link expires on{' '}
-              {new Date(shareInfo.expiresAt).toLocaleDateString()}
+            <p className="mt-3 text-center text-xs text-gray-400">
+              Expires {new Date(shareInfo.expiresAt).toLocaleDateString()}
             </p>
           )}
         </div>

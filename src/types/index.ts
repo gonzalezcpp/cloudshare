@@ -14,6 +14,7 @@ export interface ShareLinkWithFile extends ShareLink {
 export interface DashboardStats {
   totalFiles: number;
   totalFolders: number;
+  totalSharedLinks: number;
   storageUsed: number;
   storageLimit: number;
   totalDownloads: number;

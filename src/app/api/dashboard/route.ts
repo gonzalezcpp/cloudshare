@@ -33,6 +33,10 @@ export async function GET() {
       where: { ownerId: session.user.id },
     });
 
+    const totalSharedLinks = await prisma.shareLink.count({
+      where: { ownerId: session.user.id },
+    });
+
     const downloadResult = await prisma.shareLink.aggregate({
       where: {
         ownerId: session.user.id,
@@ -54,6 +58,7 @@ export async function GET() {
         stats: {
           totalFiles,
           totalFolders,
+          totalSharedLinks,
           storageUsed: user.storageUsed.toString(),
           storageLimit: user.storageLimit.toString(),
           totalDownloads: downloadResult._sum.downloadCount || 0,
