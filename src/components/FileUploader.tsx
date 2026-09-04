@@ -38,7 +38,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
       );
       setFiles([]);
       onUploadComplete?.();
-      router.refresh();
+      setTimeout(() => router.refresh(), 2000);
     },
     onUploadError: (error: Error) => {
       setUploads((prev) =>

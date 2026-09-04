@@ -8,12 +8,15 @@ import { v4 as uuidv4 } from "uuid";
 const f = createUploadthing();
 
 export const ourFileRouter = {
-  fileUploader: f({
-    blob: {
-      maxFileSize: "64MB",
-      maxFileCount: 5,
+  fileUploader: f(
+    {
+      blob: {
+        maxFileSize: "64MB",
+        maxFileCount: 5,
+      },
     },
-  })
+    { awaitServerData: false },
+  )
     .middleware(async ({ req }) => {
       const session = await getServerSession(authOptions);
       if (!session?.user?.id) {
