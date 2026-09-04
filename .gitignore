@@ -1,0 +1,10 @@
+node_modules/
+.next/
+uploads/
+*.db
+.env
+.env.local
+.env*.local
+out/
+dist/
+.vercel

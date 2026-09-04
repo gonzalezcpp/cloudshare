@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  storageUsed   BigInt    @default(0) @map("storage_used")
+  storageLimit  BigInt    @default(10737418240) @map("storage_limit")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  files         File[]
+  folders       Folder[]
+  shareLinks    ShareLink[]
+
+  @@map("users")
+}
+
+model File {
+  id            String    @id @default(cuid())
+  ownerId       String    @map("owner_id")
+  filename      String
+  originalName  String    @map("original_name")
+  storagePath   String    @unique @map("storage_path")
+  fileData      Bytes?    @map("file_data")
+  size          BigInt
+  mimeType      String    @map("mime_type")
+  folderId      String?   @map("folder_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder        Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  shareLinks    ShareLink[]
+
+  @@map("files")
+}
+
+model Folder {
+  id            String    @id @default(cuid())
+  ownerId       String    @map("owner_id")
+  name          String
+  parentId      String?   @map("parent_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parent        Folder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Folder[]  @relation("FolderHierarchy")
+  files         File[]
+
+  @@map("folders")
+}
+
+model ShareLink {
+  id            String    @id @default(cuid())
+  fileId        String    @map("file_id")
+  ownerId       String    @map("owner_id")
+  shareToken    String    @unique @map("share_token")
+  pinProtected  Boolean   @default(false) @map("pin_protected")
+  pinHash       String?   @map("pin_hash")
+  downloadCount Int       @default(0) @map("download_count")
+  maxDownloads  Int?      @map("max_downloads")
+  expiresAt     DateTime? @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  attempts      PinAttempt[]
+
+  @@map("share_links")
+}
+
+model PinAttempt {
+  id            String    @id @default(cuid())
+  shareLinkId   String    @map("share_link_id")
+  ipAddress     String    @map("ip_address")
+  success       Boolean
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  shareLink     ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  @@map("pin_attempts")
+}
