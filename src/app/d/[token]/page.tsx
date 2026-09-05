@@ -111,27 +111,27 @@ export default function DownloadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#2563eb]" />
       </div>
     );
   }
 
   if (error && !shareInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center">
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
             <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="h-6 w-6 text-red-500" />
             </div>
-            <h1 className="text-lg font-bold text-gray-900 mb-1">
+            <h1 className="text-lg font-bold text-[#0f172a] mb-1">
               Link Invalid
             </h1>
             <p className="text-sm text-gray-500 mb-6">{error}</p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold rounded-lg transition-colors"
             >
               Go to CloudShare
             </Link>
@@ -142,7 +142,7 @@ export default function DownloadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <Link href="/">
@@ -150,12 +150,12 @@ export default function DownloadPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="text-center mb-5">
-            <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Download className="h-6 w-6 text-gray-500" />
+            <div className="w-14 h-14 bg-[#2563eb]/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Download className="h-6 w-6 text-[#2563eb]" />
             </div>
-            <h1 className="text-base font-bold text-gray-900 mb-0.5">
+            <h1 className="text-base font-bold text-[#0f172a] mb-0.5">
               {shareInfo?.fileName}
             </h1>
             <p className="text-sm text-gray-400">
@@ -181,7 +181,7 @@ export default function DownloadPage() {
                 onChange={(e) => setPin(e.target.value)}
                 maxLength={6}
                 disabled={locked}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-center font-mono text-xl tracking-[0.4em]"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white text-center font-mono text-xl tracking-[0.4em]"
                 placeholder="------"
                 onKeyDown={(e) => e.key === 'Enter' && handleDownload()}
               />
@@ -202,7 +202,7 @@ export default function DownloadPage() {
           <button
             onClick={handleDownload}
             disabled={verifying || locked || (shareInfo?.pinProtected && pin.length !== 6)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             {verifying ? (
               <>

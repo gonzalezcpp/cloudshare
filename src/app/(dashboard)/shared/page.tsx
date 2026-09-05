@@ -58,7 +58,7 @@ export default function SharedPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#2563eb]/20 border-t-[#2563eb]" />
       </div>
     );
   }
@@ -66,105 +66,107 @@ export default function SharedPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-[#0f172a]">
           Shared Links
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-gray-500 mt-1 text-sm">
           Manage your shared files and links
         </p>
       </div>
 
       {sharedLinks.length > 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     File
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     Size
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     Downloads
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     PIN
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     Created
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-gray-100">
                 {sharedLinks.map((link) => (
                   <tr
                     key={link.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    className="hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="text-2xl">📁</div>
+                        <div className="w-9 h-9 bg-[#2563eb]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <ExternalLink className="h-4 w-4 text-[#2563eb]" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
+                          <p className="font-medium text-[#0f172a] text-sm">
                             {link.file.originalName}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-gray-400">
                             /d/{link.shareToken}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-4 py-3 text-sm text-gray-500">
                       {formatFileSize(Number(link.file.size))}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-4 py-3 text-sm text-gray-500">
                       {link.downloadCount}
                     </td>
                     <td className="px-4 py-3">
                       {link.pinProtected ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2563eb]/10 text-[#2563eb] text-xs font-medium rounded-full">
                           <Shield className="h-3 w-3" />
                           Protected
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded-full">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
                           <ShieldOff className="h-3 w-3" />
                           Open
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-4 py-3 text-sm text-gray-500">
                       {formatDate(link.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleCopyLink(link.shareToken)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           title="Copy link"
                         >
-                          <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                          <Copy className="h-4 w-4 text-gray-400 hover:text-[#2563eb]" />
                         </button>
                         <a
                           href={`/d/${link.shareToken}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           title="Open link"
                         >
-                          <ExternalLink className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                          <ExternalLink className="h-4 w-4 text-gray-400 hover:text-[#2563eb]" />
                         </a>
                         <button
                           onClick={() => handleDelete(link.id)}
-                          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete link"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
                         </button>
                       </div>
                     </td>
@@ -175,10 +177,15 @@ export default function SharedPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <ExternalLink className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">
-            No shared links yet. Share a file to get started!
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <ExternalLink className="h-6 w-6 text-gray-400" />
+          </div>
+          <p className="text-gray-500 text-sm">
+            No shared links yet
+          </p>
+          <p className="text-gray-400 text-xs mt-1">
+            Share a file to get started
           </p>
         </div>
       )}

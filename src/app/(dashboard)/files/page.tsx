@@ -94,16 +94,16 @@ export default function FilesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleBackClick}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                className="p-2 hover:bg-gray-100 rounded-lg"
               >
-                <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
               </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-[#0f172a]">
                 {currentFolderName}
               </h1>
             </div>
           ) : (
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-[#0f172a]">
               My Files
             </h1>
           )}
@@ -111,9 +111,9 @@ export default function FilesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreateFolder(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium"
           >
-            <FolderPlus className="h-5 w-5" />
+            <FolderPlus className="h-4 w-4" />
             New Folder
           </button>
         </div>
@@ -142,13 +142,15 @@ export default function FilesPage() {
             <button
               key={folder.id}
               onClick={() => handleFolderClick(folder)}
-              className="flex flex-col items-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200"
+              className="flex flex-col items-center p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
             >
-              <div className="text-4xl mb-2">📁</div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate w-full text-center">
+              <div className="w-12 h-12 bg-[#2563eb]/10 rounded-xl flex items-center justify-center mb-2">
+                <FolderOpen className="h-6 w-6 text-[#2563eb]" />
+              </div>
+              <p className="text-sm font-medium text-[#0f172a] truncate w-full text-center">
                 {folder.name}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-400">
                 {folder._count?.files || 0} files
               </p>
             </button>
@@ -158,7 +160,7 @@ export default function FilesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#2563eb]/20 border-t-[#2563eb]" />
         </div>
       ) : files.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -174,9 +176,11 @@ export default function FilesPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <FolderOpen className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <FolderOpen className="h-6 w-6 text-gray-400" />
+          </div>
+          <p className="text-gray-500 text-sm">
             {search ? 'No files match your search' : 'No files in this folder'}
           </p>
         </div>

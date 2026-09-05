@@ -14,15 +14,11 @@ export function BrandLogo({ size = 'md', dark = false }: BrandLogoProps) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      <Cloud className={sizes[size].icon} style={{ color: '#38bdf8' }} />
-      <span className={cn(sizes[size].text, 'font-bold tracking-tight', dark ? 'text-white' : 'text-gray-900')}>
-        <span style={{ color: '#38bdf8' }}>Cloud</span>
-        <span style={{ color: '#a78bfa' }}>Share</span>
+      <Cloud className={sizes[size].icon} style={{ color: '#2563EB' }} />
+      <span className={`${sizes[size].text} font-bold tracking-tight ${dark ? 'text-white' : 'text-[#0f172a]'}`}>
+        <span style={{ color: '#2563EB' }}>Cloud</span>
+        <span style={{ color: '#7C3AED' }}>Share</span>
       </span>
     </span>
   );
-}
-
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }

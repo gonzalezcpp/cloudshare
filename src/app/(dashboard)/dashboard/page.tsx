@@ -43,23 +43,23 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-gray-900" />
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#2563eb]/20 border-t-[#2563eb]" />
       </div>
     );
   }
 
   const statCards = [
-    { label: 'Total Files', value: stats?.totalFiles || 0, icon: FolderOpen, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Shared Links', value: stats?.totalSharedLinks || 0, icon: Share2, color: 'bg-green-50 text-green-600' },
-    { label: 'Downloads', value: stats?.totalDownloads || 0, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
-    { label: 'Storage Used', value: formatFileSize(Number(stats?.storageUsed || 0)), icon: HardDrive, color: 'bg-amber-50 text-amber-600' },
+    { label: 'Total Files', value: stats?.totalFiles || 0, icon: FolderOpen, color: 'bg-[#2563eb]/10 text-[#2563eb]' },
+    { label: 'Shared Links', value: stats?.totalSharedLinks || 0, icon: Share2, color: 'bg-[#7c3aed]/10 text-[#7c3aed]' },
+    { label: 'Downloads', value: stats?.totalDownloads || 0, icon: TrendingUp, color: 'bg-[#10b981]/10 text-[#10b981]' },
+    { label: 'Storage Used', value: formatFileSize(Number(stats?.storageUsed || 0)), icon: HardDrive, color: 'bg-[#f59e0b]/10 text-[#f59e0b]' },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-[#0f172a]">
             Welcome back, {session?.user?.name || 'User'}
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
@@ -68,23 +68,23 @@ export default function DashboardPage() {
         </div>
         <Link
           href="/files"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
         >
           <Upload className="h-4 w-4" />
           Upload
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
-          <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-4">
+          <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-500">{card.label}</span>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.color}`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${card.color}`}>
                 <card.icon className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+            <p className="text-2xl font-bold text-[#0f172a]">{card.value}</p>
           </div>
         ))}
       </div>
@@ -94,9 +94,9 @@ export default function DashboardPage() {
         limit={stats?.storageLimit || 10737418240}
       />
 
-      <div className="bg-white border border-gray-200 rounded-xl">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Recent Files</h2>
+          <h2 className="font-semibold text-[#0f172a]">Recent Files</h2>
         </div>
         <div className="p-4">
           {recentFiles.length > 0 ? (
@@ -107,11 +107,11 @@ export default function DashboardPage() {
                   className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <FolderOpen className="h-4 w-4 text-gray-500" />
+                    <div className="w-9 h-9 bg-[#2563eb]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FolderOpen className="h-4 w-4 text-[#2563eb]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-[#0f172a] truncate">
                         {file.originalName}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                   </div>
                   <Link
                     href="/files"
-                    className="text-xs font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 flex-shrink-0 ml-4"
+                    className="text-xs font-medium text-gray-500 hover:text-[#2563eb] flex items-center gap-1 flex-shrink-0 ml-4"
                   >
                     View
                     <ArrowUpRight className="h-3 w-3" />
@@ -137,7 +137,7 @@ export default function DashboardPage() {
               </p>
               <Link
                 href="/files"
-                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-gray-900 hover:underline"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-[#2563eb] hover:underline"
               >
                 Upload your first file
                 <ArrowUpRight className="h-3.5 w-3.5" />
