@@ -68,7 +68,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast.error('Incorrect password. Please try again.');
+        toast.error(result.error === 'CredentialsSignin' ? 'Incorrect password. Please try again.' : result.error);
       } else {
         toast.success('Signed in successfully');
         router.push('/dashboard');

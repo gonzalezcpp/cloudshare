@@ -17,9 +17,9 @@ export async function PATCH(req: Request) {
 
     const { currentPassword, newPassword } = await req.json();
 
-    if (!currentPassword || !newPassword) {
+    if (!newPassword) {
       return NextResponse.json(
-        { success: false, error: 'All fields are required' },
+        { success: false, error: 'New password is required' },
         { status: 400 }
       );
     }
@@ -42,23 +42,36 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const isCorrectPassword = await bcrypt.compare(
-      currentPassword,
-      user.passwordHash
-    );
+    const isGoogleOnly = user.passwordHash.startsWith('google-oauth');
 
-    if (!isCorrectPassword) {
-      return NextResponse.json(
-        { success: false, error: 'Current password is incorrect' },
-        { status: 400 }
+    if (!isGoogleOnly) {
+      if (!currentPassword) {
+        return NextResponse.json(
+          { success: false, error: 'Current password is required' },
+          { status: 400 }
+        );
+      }
+      const isCorrectPassword = await bcrypt.compare(
+        currentPassword,
+        user.passwordHash
       );
+
+      if (!isCorrectPassword) {
+        return NextResponse.json(
+          { success: false, error: 'Current password is incorrect' },
+          { status: 400 }
+        );
+      }
     }
 
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { passwordHash: newPasswordHash },
+      data: {
+        passwordHash: newPasswordHash,
+        authProvider: isGoogleOnly ? 'both' : user.authProvider,
+      },
     });
 
     return NextResponse.json({ success: true });

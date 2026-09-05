@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
-  email         String    @unique
-  passwordHash  String    @map("password_hash")
-  storageUsed   BigInt    @default(0) @map("storage_used")
-  storageLimit  BigInt    @default(10737418240) @map("storage_limit")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(cuid())
+  username         String    @unique
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  image            String?
+  authProvider     String    @default("credentials") @map("auth_provider")
+  needsOnboarding  Boolean   @default(false) @map("needs_onboarding")
+  storageUsed      BigInt    @default(0) @map("storage_used")
+  storageLimit     BigInt    @default(10737418240) @map("storage_limit")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   files         File[]
   folders       Folder[]

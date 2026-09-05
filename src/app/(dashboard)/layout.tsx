@@ -1,6 +1,8 @@
 'use client';
 
 import { Sidebar } from '@/components/Sidebar';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function DashboardLayout({
@@ -9,6 +11,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [storage, setStorage] = useState({ used: 0, limit: 10737418240 });
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated' && (session?.user as any)?.needsOnboarding) {
+      router.push('/welcome');
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     fetch('/api/dashboard')

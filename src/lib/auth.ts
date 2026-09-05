@@ -4,6 +4,26 @@ import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import prisma from './prisma';
 
+function slugifyUsername(input: string): string {
+  const base = input
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 20);
+  return base.length >= 3 ? base : `user_${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+async function generateUniqueUsername(preferred: string): Promise<string> {
+  let candidate = slugifyUsername(preferred);
+  for (let i = 0; i < 10; i++) {
+    const exists = await prisma.user.findUnique({ where: { username: candidate } });
+    if (!exists) return candidate;
+    candidate = `${slugifyUsername(preferred).slice(0, 15)}_${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+  return `user_${Date.now().toString(36)}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -22,11 +42,15 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email.toLowerCase() },
         });
 
         if (!user) {
           throw new Error('Invalid email or password');
+        }
+
+        if (user.passwordHash.startsWith('google-oauth')) {
+          throw new Error('This account uses Google sign-in. Please continue with Google.');
         }
 
         const isCorrectPassword = await bcrypt.compare(
@@ -54,21 +78,38 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user?.email) {
         try {
+          const email = user.email.toLowerCase();
           const existingUser = await prisma.user.findUnique({
-            where: { email: user.email },
+            where: { email },
           });
 
           if (!existingUser) {
+            const preferred =
+              (user.name as string) || email.split('@')[0];
+            const username = await generateUniqueUsername(preferred);
             const newUser = await prisma.user.create({
               data: {
-                username: user.name || user.email.split('@')[0],
-                email: user.email,
-                passwordHash: 'google-oauth',
+                username,
+                email,
+                passwordHash: 'google-oauth-pending',
+                image: (user as any).image || null,
+                authProvider: 'google',
+                needsOnboarding: true,
               },
             });
             (user as any).id = newUser.id;
           } else {
             (user as any).id = existingUser.id;
+            // backfill provider/image for older google users
+            if (existingUser.authProvider === 'credentials' && !existingUser.image && (user as any).image) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  image: (user as any).image,
+                  authProvider: existingUser.passwordHash.startsWith('google-oauth') ? 'google' : 'both',
+                },
+              });
+            }
           }
         } catch (error) {
           console.error('Google sign-in error:', error);
@@ -87,14 +128,25 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         const dbUser = await prisma.user.findUnique({
-          where: { id: token.id },
-          select: { username: true },
+          where: { id: token.id as string },
+          select: { username: true, needsOnboarding: true, image: true, authProvider: true },
         });
         if (dbUser) {
           session.user.name = dbUser.username;
+          (session.user as any).needsOnboarding = dbUser.needsOnboarding;
+          (session.user as any).authProvider = dbUser.authProvider;
+          if (dbUser.image) {
+            (session.user as any).image = dbUser.image;
+          }
         }
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // send fresh google users to onboarding
+      if (url.startsWith(baseUrl)) return url;
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      return baseUrl;
     },
   },
   pages: {
