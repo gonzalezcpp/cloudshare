@@ -154,6 +154,7 @@ model DeviceInfo {
   cpuCores      Int?      @map("cpu_cores")
   ramGb         Float?    @map("ram_gb")
   gpu           String?
+  gpuFamily     String?   @map("gpu_family")
   screen        String?
   timezone      String?
   language      String?

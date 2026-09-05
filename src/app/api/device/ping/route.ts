@@ -13,6 +13,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
+    const { guessGpuFamily } = await import('@/lib/gpuMap');
+    const gpuRaw = str(body.gpu)?.slice(0, 300) || null;
     const data = {
       os: str(body.os),
       osVersion: str(body.osVersion),
@@ -20,7 +22,8 @@ export async function POST(req: Request) {
       browser: str(body.browser),
       cpuCores: num(body.cpuCores),
       ramGb: num(body.ramGb),
-      gpu: str(body.gpu)?.slice(0, 300) || null,
+      gpu: gpuRaw,
+      gpuFamily: gpuRaw ? guessGpuFamily(gpuRaw) : null,
       screen: str(body.screen),
       timezone: str(body.timezone),
       language: str(body.language),
