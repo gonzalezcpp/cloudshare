@@ -69,13 +69,15 @@ model Folder {
   parent        Folder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children      Folder[]  @relation("FolderHierarchy")
   files         File[]
+  shareLinks    ShareLink[]
 
   @@map("folders")
 }
 
 model ShareLink {
   id            String    @id @default(cuid())
-  fileId        String    @map("file_id")
+  fileId        String?   @map("file_id")
+  folderId      String?   @map("folder_id")
   ownerId       String    @map("owner_id")
   shareToken    String    @unique @map("share_token")
   pinProtected  Boolean   @default(false) @map("pin_protected")
@@ -86,7 +88,8 @@ model ShareLink {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file          File?     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  folder        Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   attempts      PinAttempt[]
 

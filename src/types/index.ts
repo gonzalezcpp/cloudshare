@@ -14,6 +14,11 @@ export interface FileWithDetails extends File {
   folder?: Folder | null;
 }
 
+export interface ShareLinkWithDetails extends ShareLink {
+  file: File | null;
+  folder?: (Folder & { files: (File & { size: number | bigint })[] }) | null;
+}
+
 export interface ShareLinkWithFile extends ShareLink {
   file: File;
 }

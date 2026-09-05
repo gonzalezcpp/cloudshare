@@ -1,19 +1,27 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Shield, ShieldOff, Download, QrCode } from 'lucide-react';
+import { X, Copy, Check, Shield, ShieldOff, Download, QrCode, File, Folder } from 'lucide-react';
 import { FileWithDetails } from '@/types';
 import { formatFileSize } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
 
+interface ShareTarget {
+  id: string;
+  name: string;
+  size?: number | bigint;
+  fileCount?: number;
+  isFolder: boolean;
+}
+
 interface ShareDialogProps {
-  file: FileWithDetails;
+  target: ShareTarget;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function ShareDialog({ file, isOpen, onClose }: ShareDialogProps) {
+export function ShareDialog({ target, isOpen, onClose }: ShareDialogProps) {
   const [pinProtected, setPinProtected] = useState(false);
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +58,8 @@ export function ShareDialog({ file, isOpen, onClose }: ShareDialogProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileId: file.id,
+          fileId: target.isFolder ? undefined : target.id,
+          folderId: target.isFolder ? target.id : undefined,
           pinProtected,
           pin: pinProtected ? pin : undefined,
         }),
@@ -85,7 +94,7 @@ export function ShareDialog({ file, isOpen, onClose }: ShareDialogProps) {
     if (qrDataUrl) {
       const a = document.createElement('a');
       a.href = qrDataUrl;
-      a.download = `qr-${file.originalName}.png`;
+      a.download = `qr-${target.name}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -111,7 +120,7 @@ export function ShareDialog({ file, isOpen, onClose }: ShareDialogProps) {
       <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-[#0f172a]">
-            Share File
+            {target.isFolder ? 'Share Folder' : 'Share File'}
           </h2>
           <button
             onClick={handleClose}
@@ -123,17 +132,21 @@ export function ShareDialog({ file, isOpen, onClose }: ShareDialogProps) {
 
         <div className="p-4">
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-4">
-            <div className="w-10 h-10 bg-[#2563eb]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
+            <div className={`w-10 h-10 ${target.isFolder ? 'bg-[#7c3aed]/10' : 'bg-[#2563eb]/10'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+              {target.isFolder ? (
+                <Folder className="w-5 h-5 text-[#7c3aed]" />
+              ) : (
+                <File className="w-5 h-5 text-[#2563eb]" />
+              )}
             </div>
             <div>
               <p className="font-medium text-[#0f172a]">
-                {file.originalName}
+                {target.name}
               </p>
               <p className="text-sm text-gray-500">
-                {formatFileSize(Number(file.size))}
+                {target.isFolder
+                  ? `${target.fileCount || 0} files`
+                  : formatFileSize(Number(target.size || 0))}
               </p>
             </div>
           </div>

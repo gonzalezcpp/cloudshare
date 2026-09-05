@@ -11,7 +11,7 @@ import { RenameFileDialog } from '@/components/RenameFileDialog';
 import { MoveFileDialog } from '@/components/MoveFileDialog';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { FileWithDetails, SortField, SortDirection } from '@/types';
-import { FolderOpen, FolderPlus, ArrowLeft } from 'lucide-react';
+import { FolderOpen, FolderPlus, ArrowLeft, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function FilesPage() {
@@ -25,6 +25,7 @@ export default function FilesPage() {
   const [currentFolderName, setCurrentFolderName] = useState<string>('');
 
   const [shareDialogFile, setShareDialogFile] = useState<FileWithDetails | null>(null);
+  const [shareDialogFolder, setShareDialogFolder] = useState<any | null>(null);
   const [renameDialogFile, setRenameDialogFile] = useState<FileWithDetails | null>(null);
   const [moveDialogFile, setMoveDialogFile] = useState<FileWithDetails | null>(null);
   const [deleteDialogFile, setDeleteDialogFile] = useState<FileWithDetails | null>(null);
@@ -139,10 +140,10 @@ export default function FilesPage() {
       {folders.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {folders.map((folder) => (
-            <button
+            <div
               key={folder.id}
               onClick={() => handleFolderClick(folder)}
-              className="flex flex-col items-center p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
+              className="relative flex flex-col items-center p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <div className="w-12 h-12 bg-[#2563eb]/10 rounded-xl flex items-center justify-center mb-2">
                 <FolderOpen className="h-6 w-6 text-[#2563eb]" />
@@ -153,7 +154,17 @@ export default function FilesPage() {
               <p className="text-xs text-gray-400">
                 {folder._count?.files || 0} files
               </p>
-            </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShareDialogFolder(folder);
+                }}
+                className="absolute top-2 right-2 p-1.5 hover:bg-[#2563eb]/10 rounded-lg transition-colors"
+                title="Share folder"
+              >
+                <Share2 className="h-4 w-4 text-gray-400 hover:text-[#2563eb]" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -188,9 +199,27 @@ export default function FilesPage() {
 
       {shareDialogFile && (
         <ShareDialog
-          file={shareDialogFile}
+          target={{
+            id: shareDialogFile.id,
+            name: shareDialogFile.originalName,
+            size: shareDialogFile.size,
+            isFolder: false,
+          }}
           isOpen={true}
           onClose={() => setShareDialogFile(null)}
+        />
+      )}
+
+      {shareDialogFolder && (
+        <ShareDialog
+          target={{
+            id: shareDialogFolder.id,
+            name: shareDialogFolder.name,
+            fileCount: shareDialogFolder._count?.files || 0,
+            isFolder: true,
+          }}
+          isOpen={true}
+          onClose={() => setShareDialogFolder(null)}
         />
       )}
 

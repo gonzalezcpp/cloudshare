@@ -20,6 +20,7 @@
     "@emailjs/browser": "^4.4.1",
     "@prisma/client": "^5.12.1",
     "@supabase/supabase-js": "^2.115.0",
+    "archiver": "^8.0.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.0",
     "lucide-react": "^0.363.0",
@@ -37,6 +38,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/mime-types": "^2.1.4",
     "@types/node": "^20.12.7",

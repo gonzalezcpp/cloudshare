@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShareLinkWithFile } from '@/types';
+import { ShareLinkWithDetails } from '@/types';
 import { formatDate, formatFileSize } from '@/lib/utils';
-import { Copy, ExternalLink, Shield, ShieldOff, Trash2 } from 'lucide-react';
+import { Copy, ExternalLink, Shield, ShieldOff, Trash2, Folder, File } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SharedPage() {
-  const [sharedLinks, setSharedLinks] = useState<ShareLinkWithFile[]>([]);
+  const [sharedLinks, setSharedLinks] = useState<ShareLinkWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +55,18 @@ export default function SharedPage() {
     }
   };
 
+  const getDisplayName = (link: ShareLinkWithDetails) => {
+    if (link.file) return link.file.originalName;
+    if (link.folder) return link.folder.name;
+    return 'Unknown';
+  };
+
+  const getDisplaySize = (link: ShareLinkWithDetails) => {
+    if (link.file) return formatFileSize(Number(link.file.size));
+    if (link.folder) return `${link.folder.files.length} files`;
+    return '—';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -70,7 +82,7 @@ export default function SharedPage() {
           Shared Links
         </h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Manage your shared files and links
+          Manage your shared files and folders
         </p>
       </div>
 
@@ -81,13 +93,16 @@ export default function SharedPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                    File
+                    Item
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     Size
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     Downloads
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    Type
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     PIN
@@ -108,12 +123,16 @@ export default function SharedPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[#2563eb]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <ExternalLink className="h-4 w-4 text-[#2563eb]" />
+                        <div className={`w-9 h-9 ${link.folder ? 'bg-[#7c3aed]/10' : 'bg-[#2563eb]/10'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                          {link.folder ? (
+                            <Folder className="h-4 w-4 text-[#7c3aed]" />
+                          ) : (
+                            <File className="h-4 w-4 text-[#2563eb]" />
+                          )}
                         </div>
                         <div>
                           <p className="font-medium text-[#0f172a] text-sm">
-                            {link.file.originalName}
+                            {getDisplayName(link)}
                           </p>
                           <p className="text-xs text-gray-400">
                             /d/{link.shareToken}
@@ -122,10 +141,23 @@ export default function SharedPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {formatFileSize(Number(link.file.size))}
+                      {getDisplaySize(link)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {link.downloadCount}
+                    </td>
+                    <td className="px-4 py-3">
+                      {link.folder ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#7c3aed]/10 text-[#7c3aed] text-xs font-medium rounded-full">
+                          <Folder className="h-3 w-3" />
+                          Folder
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2563eb]/10 text-[#2563eb] text-xs font-medium rounded-full">
+                          <File className="h-3 w-3" />
+                          File
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {link.pinProtected ? (
@@ -185,7 +217,7 @@ export default function SharedPage() {
             No shared links yet
           </p>
           <p className="text-gray-400 text-xs mt-1">
-            Share a file to get started
+            Share a file or folder to get started
           </p>
         </div>
       )}

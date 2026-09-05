@@ -15,32 +15,54 @@ export async function POST(req: Request) {
       );
     }
 
-    const { fileId, pinProtected, pin, maxDownloads, expiresAt } =
+    const { fileId, folderId, pinProtected, pin, maxDownloads, expiresAt } =
       await req.json();
 
-    if (!fileId) {
+    if (!fileId && !folderId) {
       return NextResponse.json(
-        { success: false, error: 'File ID is required' },
+        { success: false, error: 'File or folder ID is required' },
         { status: 400 }
       );
     }
 
-    const file = await prisma.file.findUnique({
-      where: { id: fileId },
-    });
+    if (fileId) {
+      const file = await prisma.file.findUnique({
+        where: { id: fileId },
+      });
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'File not found' },
-        { status: 404 }
-      );
+      if (!file) {
+        return NextResponse.json(
+          { success: false, error: 'File not found' },
+          { status: 404 }
+        );
+      }
+
+      if (file.ownerId !== session.user.id) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 403 }
+        );
+      }
     }
 
-    if (file.ownerId !== session.user.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 403 }
-      );
+    if (folderId) {
+      const folder = await prisma.folder.findUnique({
+        where: { id: folderId },
+      });
+
+      if (!folder) {
+        return NextResponse.json(
+          { success: false, error: 'Folder not found' },
+          { status: 404 }
+        );
+      }
+
+      if (folder.ownerId !== session.user.id) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 403 }
+        );
+      }
     }
 
     if (pinProtected) {
@@ -58,7 +80,8 @@ export async function POST(req: Request) {
 
     const shareLink = await prisma.shareLink.create({
       data: {
-        fileId,
+        fileId: fileId || null,
+        folderId: folderId || null,
         ownerId: session.user.id,
         shareToken,
         pinProtected: pinProtected || false,
@@ -80,6 +103,7 @@ export async function POST(req: Request) {
         token: shareToken,
         url,
         pinProtected: shareLink.pinProtected,
+        type: folderId ? 'folder' : 'file',
       },
     });
   } catch (error) {
@@ -108,11 +132,25 @@ export async function GET(req: Request) {
       },
       include: {
         file: true,
+        folder: {
+          include: {
+            files: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })).map(sl => ({
       ...sl,
-      file: { ...sl.file, size: Number(sl.file.size) },
+      file: sl.file ? { ...sl.file, size: Number(sl.file.size) } : null,
+      folder: sl.folder
+        ? {
+            ...sl.folder,
+            files: sl.folder.files.map(f => ({
+              ...f,
+              size: Number(f.size),
+            })),
+          }
+        : null,
     }));
 
     return NextResponse.json({
