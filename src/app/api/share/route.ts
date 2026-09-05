@@ -75,6 +75,19 @@ export async function POST(req: Request) {
       }
     }
 
+    const { getPlan } = await import('@/lib/plans');
+    const sharer = await prisma.user.findUnique({ where: { id: session.user.id } });
+    const sharePlan = getPlan(sharer?.plan);
+    if (sharePlan.maxShares !== null) {
+      const linkCount = await prisma.shareLink.count({ where: { ownerId: session.user.id } });
+      if (linkCount >= sharePlan.maxShares) {
+        return NextResponse.json(
+          { success: false, error: `Free plan allows ${sharePlan.maxShares} share links. Upgrade to Pro for unlimited sharing.`, upgrade: true },
+          { status: 403 }
+        );
+      }
+    }
+
     const shareToken = generateShareToken();
     const pinHash = pinProtected && pin ? await hashPin(pin) : null;
 

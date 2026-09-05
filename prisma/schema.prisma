@@ -15,6 +15,10 @@ model User {
   image            String?
   authProvider     String    @default("credentials") @map("auth_provider")
   needsOnboarding  Boolean   @default(false) @map("needs_onboarding")
+  plan             String    @default("free")
+  stripeCustomerId String?   @map("stripe_customer_id")
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+  subscriptionStatus String? @map("subscription_status")
   storageUsed      BigInt    @default(0) @map("storage_used")
   storageLimit     BigInt    @default(10737418240) @map("storage_limit")
   createdAt        DateTime  @default(now()) @map("created_at")

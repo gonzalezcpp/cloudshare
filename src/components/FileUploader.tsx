@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { createClient } from '@supabase/supabase-js';
-import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, File, X, CheckCircle, AlertCircle, Crown } from 'lucide-react';
+import Link from 'next/link';
 import { cn, formatFileSize } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -20,7 +21,18 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
     progress: number;
     status: 'uploading' | 'completed' | 'error';
     error?: string;
+    needsUpgrade?: boolean;
   }[]>([]);
+  const [maxFileSize, setMaxFileSize] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/billing/status')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setMaxFileSize(d.data.maxFileSize);
+      })
+      .catch(() => {});
+  }, []);
 
   const uploadFile = async (file: File) => {
     const fileId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -53,7 +65,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
       if (!infoData.success) {
         setUploads((prev) =>
           prev.map((u) =>
-            u.fileId === fileId ? { ...u, status: 'error', error: infoData.error } : u
+            u.fileId === fileId ? { ...u, status: 'error', error: infoData.error, needsUpgrade: infoData.upgrade } : u
           )
         );
         return;
@@ -166,7 +178,7 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
               Drag & drop files here, or click to select
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Up to 50MB per file
+              {maxFileSize ? `Up to ${formatFileSize(maxFileSize)} per file` : 'Select files to upload'}
             </p>
           </>
         )}
@@ -193,7 +205,14 @@ export function FileUploader({ folderId, onUploadComplete }: FileUploaderProps) 
                   </div>
                 )}
                 {upload.status === 'error' && (
-                  <p className="text-xs text-red-500 mt-1">{upload.error}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {upload.error}{' '}
+                    {upload.needsUpgrade && (
+                      <Link href="/pricing" className="inline-flex items-center gap-1 font-semibold text-[#2563eb] hover:underline">
+                        <Crown className="h-3 w-3" /> Upgrade
+                      </Link>
+                    )}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-2">

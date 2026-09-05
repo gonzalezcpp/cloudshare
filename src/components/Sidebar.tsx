@@ -123,10 +123,14 @@ export function Sidebar({ storageUsed = 0, storageLimit = 10737418240 }: Sidebar
           </div>
 
           {/* Upgrade */}
-          <button className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+          <Link
+            href="/pricing"
+            onClick={() => setIsOpen(false)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
             <Crown className="h-4 w-4 text-[#f59e0b]" />
             Upgrade Storage
-          </button>
+          </Link>
 
           {/* User */}
           <div className="flex items-center gap-3">

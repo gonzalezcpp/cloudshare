@@ -1,9 +1,11 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
-import { User, Lock, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { User, Lock, Save, Crown, CreditCard, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { formatFileSize } from '@/lib/utils';
 
 export default function SettingsPage() {
   const { data: session, update } = useSession();
@@ -12,6 +14,42 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [billing, setBilling] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/billing/status')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setBilling(d.data);
+      })
+      .catch(() => {});
+    if (typeof window !== 'undefined' && window.location.search.includes('upgraded=1')) {
+      toast.success('Welcome to Pro! Your plan is now active.');
+      window.history.replaceState({}, '', '/settings');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (session?.user?.name) setUsername(session.user.name);
+  }, [session?.user?.name]);
+
+  const handleManageBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.data?.url) {
+        window.location.href = data.data.url;
+      } else {
+        toast.error(data.error || 'Failed to open billing portal');
+      }
+    } catch {
+      toast.error('Failed to open billing portal');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +125,54 @@ export default function SettingsPage() {
         <p className="text-gray-500 mt-1 text-sm">
           Manage your account settings
         </p>
+      </div>
+
+      <div className="bg-gradient-to-r from-[#2563eb] to-[#7c3aed] rounded-xl p-6 shadow-sm text-white">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+              <Crown className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">
+                {billing ? `${billing.planName} plan` : 'Your plan'}
+              </h2>
+              <p className="text-sm text-white/70">
+                {billing
+                  ? `${formatFileSize(billing.storageUsed)} of ${formatFileSize(billing.storageLimit)} used`
+                  : 'Loading usage...'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {billing && billing.plan !== 'free' ? (
+              <button
+                onClick={handleManageBilling}
+                disabled={billingLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#2563eb] text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {billingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                Manage billing
+              </button>
+            ) : (
+              <Link
+                href="/pricing"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#2563eb] text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Crown className="h-4 w-4" />
+                Upgrade
+              </Link>
+            )}
+          </div>
+        </div>
+        {billing && (
+          <div className="mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all"
+              style={{ width: `${Math.min((billing.storageUsed / Math.max(billing.storageLimit, 1)) * 100, 100)}%` }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">

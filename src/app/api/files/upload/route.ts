@@ -35,9 +35,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const { getPlan } = await import('@/lib/plans');
+    const { formatFileSize } = await import('@/lib/utils');
+    const plan = getPlan((user as any).plan);
+
+    if (Number(fileSize) > plan.maxFileSize) {
+      return NextResponse.json(
+        { success: false, error: `${plan.name} plan allows max ${formatFileSize(plan.maxFileSize)} per file. Upgrade for larger uploads.`, upgrade: true },
+        { status: 400 }
+      );
+    }
+
     if (user.storageUsed + BigInt(fileSize) > user.storageLimit) {
       return NextResponse.json(
-        { success: false, error: 'Storage limit exceeded' },
+        { success: false, error: `Storage limit exceeded (${formatFileSize(Number(user.storageLimit))} on ${plan.name} plan). Upgrade or free up space.`, upgrade: true },
         { status: 400 }
       );
     }
