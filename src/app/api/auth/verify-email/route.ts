@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { sendVerificationEmail } from '@/lib/email';
 
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -16,7 +17,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if email is already registered
     const existingUser = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -28,15 +28,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Invalidate any previous codes for this email
     await prisma.verificationCode.updateMany({
       where: { email: email.toLowerCase(), used: false },
       data: { used: true },
     });
 
-    // Generate and store new code
     const code = generateCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.verificationCode.create({
       data: {
@@ -46,11 +44,19 @@ export async function POST(req: Request) {
       },
     });
 
-    // Return code so client can send via EmailJS
+    const sent = await sendVerificationEmail(email, code);
+
+    if (!sent) {
+      return NextResponse.json({
+        success: true,
+        code: code,
+        message: 'Email sending failed, code generated for backup',
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      code: code,
-      message: 'Verification code generated',
+      message: 'Verification code sent to your email',
     });
   } catch (error) {
     console.error('Generate verification code error:', error);
