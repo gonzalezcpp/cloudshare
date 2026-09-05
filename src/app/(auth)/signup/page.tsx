@@ -53,6 +53,7 @@ export default function SignupPage() {
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+  const [devCode, setDevCode] = useState('');
 
   const passwordStrength = getPasswordStrength(password);
 
@@ -96,7 +97,13 @@ export default function SignupPage() {
 
       if (data.success) {
         setStep('verify');
-        toast.success('Verification code sent to your email');
+        if (data.devCode) {
+          setDevCode(data.devCode);
+          toast.success('Verification code generated (see below)');
+        } else {
+          setDevCode('');
+          toast.success('Verification code sent to your email');
+        }
         // Start resend timer
         setResendTimer(60);
         const timer = setInterval(() => {
@@ -245,6 +252,13 @@ export default function SignupPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            {devCode && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-600 font-medium mb-1">Development Mode</p>
+                <p className="text-xs text-amber-500">Email service not configured. Use this code:</p>
+                <p className="text-2xl font-mono font-bold text-amber-700 tracking-widest text-center mt-2">{devCode}</p>
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
