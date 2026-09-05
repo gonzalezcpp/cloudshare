@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { sendVerificationEmail } from '@/lib/email';
 
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -47,25 +46,14 @@ export async function POST(req: Request) {
       },
     });
 
-    // Send email
-    const sent = await sendVerificationEmail(email, code);
-
-    if (!sent) {
-      // Fallback: return code in response for dev/testing
-      return NextResponse.json({
-        success: true,
-        message: 'Verification code generated',
-        devCode: code,
-        devNote: 'Email service not configured. Use this code to verify.',
-      });
-    }
-
+    // Return code so client can send via EmailJS
     return NextResponse.json({
       success: true,
-      message: 'Verification code sent to your email',
+      code: code,
+      message: 'Verification code generated',
     });
   } catch (error) {
-    console.error('Send verification error:', error);
+    console.error('Generate verification code error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

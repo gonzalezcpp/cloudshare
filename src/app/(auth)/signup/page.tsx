@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, AlertCircle, Shield, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BrandLogo } from '@/components/BrandLogo';
+import emailjs from '@emailjs/browser';
 
 function validateEmail(email: string) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,6 +88,7 @@ export default function SignupPage() {
     setCodeError('');
 
     try {
+      // Step 1: Generate code on server
       const response = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,16 +97,31 @@ export default function SignupPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        setStep('verify');
-        if (data.devCode) {
-          setDevCode(data.devCode);
-          toast.success('Verification code generated (see below)');
-        } else {
-          setDevCode('');
-          toast.success('Verification code sent to your email');
+      if (!data.success) {
+        toast.error(data.error || 'Failed to generate verification code');
+        return;
+      }
+
+      const code = data.code;
+
+      // Step 2: Send email via EmailJS from client
+      emailjs.init('NVdiyUwoyD2wFvEaW');
+
+      const emailResult = await emailjs.send(
+        'service_tn80ye9',
+        'template_pp00kbr',
+        {
+          email: email,
+          passcode: code,
+          time: new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString(),
+          to_name: 'CloudShare User',
         }
-        // Start resend timer
+      );
+
+      if (emailResult.status === 200) {
+        setStep('verify');
+        setDevCode(code);
+        toast.success('Verification code sent to your email!');
         setResendTimer(60);
         const timer = setInterval(() => {
           setResendTimer((prev) => {
@@ -116,9 +133,10 @@ export default function SignupPage() {
           });
         }, 1000);
       } else {
-        toast.error(data.error || 'Failed to send verification code');
+        toast.error('Failed to send email. Please try again.');
       }
     } catch (error) {
+      console.error('Send verification error:', error);
       toast.error('Failed to send verification code');
     } finally {
       setSendingCode(false);
