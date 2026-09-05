@@ -104,37 +104,43 @@ export default function SignupPage() {
 
       const code = data.code;
 
-      // Step 2: Send email via EmailJS from client
-      emailjs.init('NVdiyUwoyD2wFvEaW');
-
-      const emailResult = await emailjs.send(
-        'service_tn80ye9',
-        'template_pp00kbr',
-        {
-          email: email,
-          passcode: code,
-          time: new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString(),
-          to_name: 'CloudShare User',
-        }
-      );
-
-      if (emailResult.status === 200) {
-        setStep('verify');
-        setDevCode(code);
-        toast.success('Verification code sent to your email!');
-        setResendTimer(60);
-        const timer = setInterval(() => {
-          setResendTimer((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        toast.error('Failed to send email. Please try again.');
+      // Step 2: Try to send email via EmailJS from client
+      let emailSent = false;
+      try {
+        emailjs.init('NVdiyUwoyD2wFvEaW');
+        const emailResult = await emailjs.send(
+          'service_tn80ye9',
+          'template_pp00kbr',
+          {
+            email: email,
+            passcode: code,
+            time: new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString(),
+            to_name: 'CloudShare User',
+          }
+        );
+        emailSent = emailResult.status === 200;
+      } catch (emailError) {
+        console.error('EmailJS error:', emailError);
       }
+
+      // Step 3: Always show verification step with code
+      setStep('verify');
+      setDevCode(code);
+      if (emailSent) {
+        toast.success('Verification code sent to your email!');
+      } else {
+        toast.success('Verification code generated — use the code below');
+      }
+      setResendTimer(60);
+      const timer = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (error) {
       console.error('Send verification error:', error);
       toast.error('Failed to send verification code');
