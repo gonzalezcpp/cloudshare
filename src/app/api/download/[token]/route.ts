@@ -143,6 +143,25 @@ export async function POST(
       },
     });
 
+    // Log download history for the file owner
+    try {
+      await prisma.downloadHistory.create({
+        data: {
+          userId: shareLink.ownerId,
+          fileId: shareLink.file.id,
+          fileName: shareLink.file.originalName,
+          fileSize: shareLink.file.size,
+          shareLinkId: shareLink.id,
+          ipAddress:
+            req.headers.get('x-forwarded-for') ||
+            req.headers.get('x-real-ip') ||
+            'unknown',
+        },
+      });
+    } catch (e) {
+      console.error('Failed to log download history:', e);
+    }
+
     const isDbStorage = shareLink.file.storagePath.startsWith('db:');
     const isUploadthing = shareLink.file.storagePath.startsWith('ut:');
     const isSupabase = !isDbStorage && !isUploadthing && shareLink.file.storagePath.includes('/');

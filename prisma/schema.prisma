@@ -20,6 +20,7 @@ model User {
   files         File[]
   folders       Folder[]
   shareLinks    ShareLink[]
+  downloads     DownloadHistory[]
 
   @@map("users")
 }
@@ -40,6 +41,7 @@ model File {
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   folder        Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   shareLinks    ShareLink[]
+  downloads     DownloadHistory[]
 
   @@map("files")
 }
@@ -90,4 +92,20 @@ model PinAttempt {
   shareLink     ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
 
   @@map("pin_attempts")
+}
+
+model DownloadHistory {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  fileId        String    @map("file_id")
+  fileName      String    @map("file_name")
+  fileSize      BigInt    @map("file_size")
+  shareLinkId   String?   @map("share_link_id")
+  ipAddress     String?   @map("ip_address")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  owner         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("download_history")
 }

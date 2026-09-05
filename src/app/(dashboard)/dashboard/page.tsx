@@ -19,21 +19,23 @@ import {
   Sparkles,
   ArrowRight,
   UploadCloud,
-  CheckCircle2,
-  MessageCircle,
+  Download,
+  Clock,
 } from 'lucide-react';
 import { formatDate, formatFileSize } from '@/lib/utils';
-import { DashboardStats } from '@/types';
+import { DashboardStats, DownloadHistoryItem } from '@/types';
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentFiles, setRecentFiles] = useState<any[]>([]);
+  const [downloadHistory, setDownloadHistory] = useState<DownloadHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStats();
+    fetchDownloadHistory();
   }, []);
 
   const fetchStats = async () => {
@@ -48,6 +50,18 @@ export default function DashboardPage() {
       console.error('Failed to fetch stats');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDownloadHistory = async () => {
+    try {
+      const response = await fetch('/api/downloads');
+      const data = await response.json();
+      if (data.success) {
+        setDownloadHistory(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch download history');
     }
   };
 
@@ -191,6 +205,61 @@ export default function DashboardPage() {
                   <Upload className="h-4 w-4" />
                   Upload File
                 </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Download History */}
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
+          <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Download className="h-4 w-4 text-[#7c3aed]" />
+              <h2 className="font-semibold text-[#0f172a]">Download History</h2>
+            </div>
+            {downloadHistory.length > 0 && (
+              <span className="text-xs text-gray-400">{downloadHistory.length} downloads</span>
+            )}
+          </div>
+          <div className="p-4">
+            {downloadHistory.length > 0 ? (
+              <div className="divide-y divide-gray-50">
+                {downloadHistory.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 bg-[#7c3aed]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Download className="h-4 w-4 text-[#7c3aed]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#0f172a] truncate">
+                          {item.fileName}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {formatFileSize(item.fileSize)} &middot; {formatDate(item.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0 ml-4">
+                      <Clock className="h-3 w-3" />
+                      {new Date(item.createdAt).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <Download className="h-6 w-6 text-gray-300" />
+                </div>
+                <p className="text-sm text-gray-400">
+                  No downloads yet
+                </p>
+                <p className="text-xs text-gray-300 mt-1">
+                  Download history will appear here
+                </p>
               </div>
             )}
           </div>
