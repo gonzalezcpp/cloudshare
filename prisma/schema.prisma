@@ -20,6 +20,7 @@ model User {
   stripeSubscriptionId String? @map("stripe_subscription_id")
   subscriptionStatus String? @map("subscription_status")
   lastIp           String?   @map("last_ip")
+  lastHostname     String?   @map("last_hostname")
   lastCity         String?   @map("last_city")
   lastCountry      String?   @map("last_country")
   lastIsp          String?   @map("last_isp")
@@ -130,6 +131,7 @@ model LoginHistory {
   userId        String    @map("user_id")
   event         String    @default("login")
   ipAddress     String?   @map("ip_address")
+  hostname      String?
   city          String?
   country       String?
   isp           String?

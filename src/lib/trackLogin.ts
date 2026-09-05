@@ -3,6 +3,7 @@ import prisma from './prisma';
 
 export interface GeoInfo {
   ip: string;
+  hostname: string | null;
   city: string | null;
   country: string | null;
   isp: string | null;
@@ -87,11 +88,32 @@ async function lookupGeo(ip: string): Promise<{ city: string | null; country: st
   }
 }
 
+// Reverse-DNS hostname for an IPv4 address. Null when none exists
+// (most mobile/residential IPs have none — that's normal).
+async function lookupHostname(ip: string): Promise<string | null> {
+  if (isPrivateIp(ip)) return 'local';
+  const parts = ip.split('.');
+  if (parts.length !== 4 || parts.some((p) => !/^\d{1,3}$/.test(p))) return null;
+  const arpa = `${[...parts].reverse().join('.')}.in-addr.arpa`;
+  try {
+    const res = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(arpa)}&type=PTR`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const ptr = data?.Answer?.find((a: any) => a.type === 12)?.data;
+    return typeof ptr === 'string' ? ptr.replace(/\.$/, '') : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function collectGeo(): Promise<GeoInfo> {
   const ip = getClientIp();
   const userAgent = getUserAgent();
-  const geo = await lookupGeo(ip);
-  return { ip, userAgent, ...geo };
+  const [geo, hostname] = await Promise.all([lookupGeo(ip), lookupHostname(ip)]);
+  return { ip, userAgent, hostname, ...geo };
 }
 
 // Records a login/signup event + updates the user's last-known location.
@@ -109,6 +131,7 @@ export async function recordLogin(
           userId,
           event,
           ipAddress: info.ip,
+          hostname: info.hostname,
           city: info.city,
           country: info.country,
           isp: info.isp,
@@ -119,6 +142,7 @@ export async function recordLogin(
         where: { id: userId },
         data: {
           lastIp: info.ip,
+          lastHostname: info.hostname,
           lastCity: info.city,
           lastCountry: info.country,
           lastIsp: info.isp,
