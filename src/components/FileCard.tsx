@@ -11,6 +11,7 @@ import {
   FolderInput,
   MoreVertical,
   ExternalLink,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ interface FileCardProps {
   onRename: (file: FileWithDetails) => void;
   onDelete: (file: FileWithDetails) => void;
   onMove: (file: FileWithDetails) => void;
+  onPreview?: (file: FileWithDetails) => void;
 }
 
 export function FileCard({
@@ -28,17 +30,21 @@ export function FileCard({
   onRename,
   onDelete,
   onMove,
+  onPreview,
 }: FileCardProps) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div className="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-lg transition-all duration-200">
       <div className="flex items-start gap-3">
-        <div className="text-3xl">{getFileIcon(file.mimeType)}</div>
+        <button onClick={() => onPreview?.(file)} className="text-3xl hover:scale-110 transition-transform" title="Preview">
+          {getFileIcon(file.mimeType)}
+        </button>
         <div className="flex-1 min-w-0">
           <h3
-            className="font-medium text-gray-900 dark:text-white truncate"
+            className="font-medium text-gray-900 dark:text-white truncate cursor-pointer hover:text-[#2563eb]"
             title={file.originalName}
+            onClick={() => onPreview?.(file)}
           >
             {truncateFilename(file.originalName)}
           </h3>
@@ -63,6 +69,16 @@ export function FileCard({
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
+                <button
+                  onClick={() => {
+                    onPreview?.(file);
+                    setShowMenu(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </button>
                 <button
                   onClick={() => {
                     onShare(file);

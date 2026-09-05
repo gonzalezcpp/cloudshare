@@ -25,7 +25,7 @@ const navigation = [
   { name: 'My Files', href: '/files', icon: FolderOpen },
   { name: 'Shared Links', href: '/shared', icon: Share2 },
   { name: 'Activity', href: '/dashboard', icon: Clock },
-  { name: 'Trash', href: '/files', icon: Trash2 },
+  { name: 'Trash', href: '/trash', icon: Trash2 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

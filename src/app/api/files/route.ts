@@ -22,6 +22,7 @@ export async function GET(req: Request) {
 
     const where: any = {
       ownerId: session.user.id,
+      deletedAt: null,
       ...(folderId ? { folderId } : { folderId: null }),
     };
 
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
       where: {
         ownerId: session.user.id,
         parentId: folderId || null,
+        deletedAt: null,
       },
       include: {
         _count: {

@@ -71,6 +71,7 @@ export async function GET(req: Request) {
     const folders = await prisma.folder.findMany({
       where: {
         ownerId: session.user.id,
+        deletedAt: null,
       },
       select: {
         id: true,

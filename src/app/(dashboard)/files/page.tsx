@@ -11,7 +11,8 @@ import { RenameFileDialog } from '@/components/RenameFileDialog';
 import { MoveFileDialog } from '@/components/MoveFileDialog';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { FileWithDetails, SortField, SortDirection } from '@/types';
-import { FolderOpen, FolderPlus, ArrowLeft, Share2 } from 'lucide-react';
+import { FolderOpen, FolderPlus, ArrowLeft, Share2, Trash2 } from 'lucide-react';
+import { FilePreview } from '@/components/FilePreview';
 import toast from 'react-hot-toast';
 
 export default function FilesPage() {
@@ -29,6 +30,8 @@ export default function FilesPage() {
   const [renameDialogFile, setRenameDialogFile] = useState<FileWithDetails | null>(null);
   const [moveDialogFile, setMoveDialogFile] = useState<FileWithDetails | null>(null);
   const [deleteDialogFile, setDeleteDialogFile] = useState<FileWithDetails | null>(null);
+  const [deleteDialogFolder, setDeleteDialogFolder] = useState<any | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileWithDetails | null>(null);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
 
   const fetchFiles = useCallback(async () => {
@@ -66,6 +69,19 @@ export default function FilesPage() {
   };
 
   const handleDelete = async () => {
+    if (deleteDialogFolder) {
+      const response = await fetch(`/api/folders/${deleteDialogFolder.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete folder');
+      }
+      toast.success('Folder moved to trash');
+      setDeleteDialogFolder(null);
+      fetchFiles();
+      return;
+    }
     if (!deleteDialogFile) return;
     const response = await fetch(`/api/files/${deleteDialogFile.id}`, {
       method: 'DELETE',
@@ -74,6 +90,7 @@ export default function FilesPage() {
     if (!data.success) {
       throw new Error(data.error || 'Failed to delete file');
     }
+    toast.success('File moved to trash');
     fetchFiles();
   };
 
@@ -154,16 +171,28 @@ export default function FilesPage() {
               <p className="text-xs text-gray-400">
                 {folder._count?.files || 0} files
               </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShareDialogFolder(folder);
-                }}
-                className="absolute top-2 right-2 p-1.5 hover:bg-[#2563eb]/10 rounded-lg transition-colors"
-                title="Share folder"
-              >
-                <Share2 className="h-4 w-4 text-gray-400 hover:text-[#2563eb]" />
-              </button>
+              <div className="absolute top-2 right-2 flex gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShareDialogFolder(folder);
+                  }}
+                  className="p-1.5 hover:bg-[#2563eb]/10 rounded-lg transition-colors bg-white/80"
+                  title="Share folder"
+                >
+                  <Share2 className="h-4 w-4 text-gray-400 hover:text-[#2563eb]" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteDialogFolder(folder);
+                  }}
+                  className="p-1.5 hover:bg-red-50 rounded-lg transition-colors bg-white/80"
+                  title="Move to trash"
+                >
+                  <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -183,6 +212,7 @@ export default function FilesPage() {
               onRename={setRenameDialogFile}
               onDelete={setDeleteDialogFile}
               onMove={setMoveDialogFile}
+              onPreview={setPreviewFile}
             />
           ))}
         </div>
@@ -243,13 +273,29 @@ export default function FilesPage() {
         />
       )}
 
-      {deleteDialogFile && (
+      {(deleteDialogFile || deleteDialogFolder) && (
         <DeleteConfirmDialog
-          title="Delete File"
-          message={`Are you sure you want to delete "${deleteDialogFile.originalName}"? This action cannot be undone.`}
+          title={deleteDialogFolder ? 'Move Folder to Trash' : 'Move File to Trash'}
+          message={
+            deleteDialogFolder
+              ? `"${deleteDialogFolder.name}" and its files will be moved to trash. You can restore within 30 days.`
+              : `"${deleteDialogFile?.originalName}" will be moved to trash. You can restore within 30 days.`
+          }
           isOpen={true}
-          onClose={() => setDeleteDialogFile(null)}
+          onClose={() => {
+            setDeleteDialogFile(null);
+            setDeleteDialogFolder(null);
+          }}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {previewFile && (
+        <FilePreview
+          fileId={previewFile.id}
+          fileName={previewFile.originalName}
+          isOpen={true}
+          onClose={() => setPreviewFile(null)}
         />
       )}
 

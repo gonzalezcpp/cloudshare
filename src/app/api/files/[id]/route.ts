@@ -35,6 +35,17 @@ export async function DELETE(
       );
     }
 
+    const { searchParams } = new URL(req.url);
+    const permanent = searchParams.get('permanent') === 'true';
+
+    if (!permanent) {
+      await prisma.file.update({
+        where: { id: params.id },
+        data: { deletedAt: new Date() },
+      });
+      return NextResponse.json({ success: true, trashed: true });
+    }
+
     if (file.storagePath.startsWith('db:') || file.storagePath.startsWith('ut:')) {
       // db: and ut: files don't need external deletion
     } else if (process.env.SUPABASE_URL && file.storagePath.includes('/')) {
@@ -60,7 +71,7 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, trashed: false });
   } catch (error) {
     console.error('Delete file error:', error);
     return NextResponse.json(

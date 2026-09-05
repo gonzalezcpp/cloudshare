@@ -61,6 +61,9 @@ async function assertActive(shareLink: any) {
   if (!shareLink) {
     return { error: 'Share link not found', status: 404 as const };
   }
+  if (shareLink.file?.deletedAt || shareLink.folder?.deletedAt) {
+    return { error: 'Share link no longer available', status: 410 as const };
+  }
   if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
     return { error: 'Share link has expired', status: 410 as const };
   }
@@ -142,12 +145,14 @@ export async function GET(
     }
 
     if (shareLink.folderId && shareLink.folder) {
-      const files = shareLink.folder.files.map((f) => ({
-        id: f.id,
-        name: f.originalName,
-        size: f.size.toString(),
-        mimeType: f.mimeType,
-      }));
+      const files = shareLink.folder.files
+        .filter((f: any) => !f.deletedAt)
+        .map((f) => ({
+          id: f.id,
+          name: f.originalName,
+          size: f.size.toString(),
+          mimeType: f.mimeType,
+        }));
 
       const totalSize = files.reduce(
         (sum, f) => sum + BigInt(f.size),
@@ -246,7 +251,7 @@ export async function POST(
 
     // Folder share ZIP download
     if (shareLink.folderId && mode === 'zip') {
-      const files = shareLink.folder?.files || [];
+      const files = (shareLink.folder?.files || []).filter((f: any) => !f.deletedAt);
 
       if (files.length === 0) {
         return NextResponse.json(
@@ -364,13 +369,13 @@ export async function POST(
 
     // Folder share - specific file download
     if (shareLink.folderId) {
+      const activeFiles = (shareLink.folder?.files || []).filter((f: any) => !f.deletedAt);
       let file = null;
       if (fileId) {
-        file =
-          shareLink.folder?.files.find((f) => f.id === fileId) || null;
+        file = activeFiles.find((f) => f.id === fileId) || null;
       } else {
         // Default to first file if none specified
-        file = shareLink.folder?.files[0] || null;
+        file = activeFiles[0] || null;
       }
 
       if (!file) {

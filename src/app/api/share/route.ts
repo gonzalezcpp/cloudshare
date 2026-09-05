@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         where: { id: fileId },
       });
 
-      if (!file) {
+      if (!file || (file as any).deletedAt) {
         return NextResponse.json(
           { success: false, error: 'File not found' },
           { status: 404 }
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         where: { id: folderId },
       });
 
-      if (!folder) {
+      if (!folder || (folder as any).deletedAt) {
         return NextResponse.json(
           { success: false, error: 'Folder not found' },
           { status: 404 }

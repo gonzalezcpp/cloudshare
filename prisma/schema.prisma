@@ -46,6 +46,7 @@ model File {
   size          BigInt
   mimeType      String    @map("mime_type")
   folderId      String?   @map("folder_id")
+  deletedAt     DateTime? @map("deleted_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -62,6 +63,7 @@ model Folder {
   ownerId       String    @map("owner_id")
   name          String
   parentId      String?   @map("parent_id")
+  deletedAt     DateTime? @map("deleted_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

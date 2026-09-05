@@ -26,11 +26,11 @@ export async function GET() {
     }
 
     const totalFiles = await prisma.file.count({
-      where: { ownerId: session.user.id },
+      where: { ownerId: session.user.id, deletedAt: null },
     });
 
     const totalFolders = await prisma.folder.count({
-      where: { ownerId: session.user.id },
+      where: { ownerId: session.user.id, deletedAt: null },
     });
 
     const totalSharedLinks = await prisma.shareLink.count({
@@ -47,7 +47,7 @@ export async function GET() {
     });
 
     const recentFiles = (await prisma.file.findMany({
-      where: { ownerId: session.user.id },
+      where: { ownerId: session.user.id, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 5,
     })).map(f => ({ ...f, size: Number(f.size) }));
