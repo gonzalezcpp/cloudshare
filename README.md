@@ -1,96 +1,217 @@
+<div align="center">
+
 # CloudShare
 
-A modern cloud file-storage and file-sharing web application with optional Secret PIN protection.
+### Secure Cloud File Storage & Sharing
+
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)](https://tailwindcss.com)
+[![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma)](https://prisma.io)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+**Live Demo:** [cloudshare-liart.vercel.app](https://cloudshare-liart.vercel.app)
+
+---
+
+Upload, organize, and share files with optional PIN-protected links. Simple, secure, and beautiful.
+
+</div>
+
+---
 
 ## Features
 
-- **User Accounts**: Sign up, log in, and manage your profile
-- **File Upload**: Drag-and-drop interface with progress indicators
-- **File Management**: Rename, move, delete files, and create folders
-- **File Sharing**: Generate share links with optional 6-character PIN protection
-- **Secure Downloads**: PIN-protected downloads with rate limiting
-- **Responsive UI**: Works on desktop and mobile devices
-- **Dark Mode**: Toggle between light and dark themes
+| Feature | Description |
+|---------|-------------|
+| **Cloud Storage** | Upload files up to 50MB with drag-and-drop support |
+| **File Management** | Rename, move, delete files and create folders |
+| **Share Links** | Generate secure shareable links for any file |
+| **PIN Protection** | Optional 6-character PIN for extra security |
+| **QR Codes** | Generate QR codes for share links - scan to download |
+| **Download History** | Track all downloads with timestamps |
+| **Google OAuth** | Sign in with your Google account |
+| **Responsive Design** | Works perfectly on desktop and mobile |
+
+## Screenshots
+
+<div align="center">
+
+![Landing Page](https://via.placeholder.com/800x400/f8fafc/2563eb?text=CloudShare+Landing+Page)
+*Landing page with clean, modern design*
+
+![Dashboard](https://via.placeholder.com/800x400/f8fafc/2563eb?text=Dashboard+with+3-Column+Layout)
+*Dashboard with stats, recent files, and quick actions*
+
+![Download Page](https://via.placeholder.com/800x400/f8fafc/2563eb?text=Download+Page)
+*MediaFire-inspired download page with file details*
+
+</div>
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Storage**: S3-compatible object storage
-- **Authentication**: NextAuth.js with JWT sessions
+```
+Frontend    →  Next.js 14, React 18, TypeScript
+Styling     →  Tailwind CSS
+Database    →  PostgreSQL (Neon)
+ORM         →  Prisma 5
+Auth        →  NextAuth.js (Credentials + Google OAuth)
+Storage     →  Supabase Storage / S3-compatible
+Deployment  →  Vercel
+```
 
-## Prerequisites
+## Getting Started
 
-- Node.js 18+ 
-- PostgreSQL database
-- S3-compatible storage (AWS S3, MinIO, etc.)
+### Prerequisites
 
-## Setup Instructions
+- Node.js 18+
+- PostgreSQL database (or [Neon](https://neon.tech) free tier)
+- [Supabase](https://supabase.com) account (for file storage)
 
-### 1. Clone and Install
+### 1. Clone the repository
 
 ```bash
+git clone https://github.com/gonzalezcpp/cloudshare.git
 cd cloudshare
+```
+
+### 2. Install dependencies
+
+```bash
 npm install
 ```
 
-### 2. Configure Environment
+### 3. Set up environment variables
 
-Copy `.env.example` to `.env` and fill in your configuration:
+Create a `.env` file in the root directory:
 
-```bash
-cp .env.example .env
+```env
+# Database (PostgreSQL)
+DATABASE_URL="postgresql://user:password@host:5432/cloudshare"
+
+# NextAuth
+NEXTAUTH_SECRET="your-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# Supabase Storage (optional)
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_KEY="your-service-key"
+SUPABASE_BUCKET="your-bucket-name"
 ```
 
-Required environment variables:
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXTAUTH_SECRET`: Random secret for JWT signing
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: S3 credentials
-- `S3_BUCKET_NAME`: Your S3 bucket name
-
-### 3. Initialize Database
+### 4. Initialize database
 
 ```bash
 npx prisma generate
 npx prisma db push
 ```
 
-### 4. Seed Demo User (Optional)
-
-```bash
-npx prisma db seed
-```
-
-This creates a demo account:
-- Email: `demo@cloudshare.com`
-- Password: `password123`
-
-### 5. Start Development Server
+### 5. Start development server
 
 ```bash
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000)
 
-## Production Deployment
+## Project Structure
 
-### Build
-
-```bash
-npm run build
+```
+cloudshare/
+├── prisma/
+│   └── schema.prisma          # Database schema
+├── src/
+│   ├── app/
+│   │   ├── (auth)/            # Login & signup pages
+│   │   │   ├── login/
+│   │   │   └── signup/
+│   │   ├── (dashboard)/       # Authenticated pages
+│   │   │   ├── dashboard/     # Main dashboard
+│   │   │   ├── files/         # File manager
+│   │   │   ├── shared/        # Shared links
+│   │   │   └── settings/      # User settings
+│   │   ├── api/               # API routes
+│   │   │   ├── auth/          # Authentication
+│   │   │   ├── dashboard/     # Dashboard stats
+│   │   │   ├── download/      # File downloads
+│   │   │   ├── downloads/     # Download history
+│   │   │   ├── files/         # File operations
+│   │   │   ├── share/         # Share link management
+│   │   │   └── user/          # User profile
+│   │   ├── d/[token]/         # Public download page
+│   │   └── page.tsx           # Landing page
+│   ├── components/            # React components
+│   │   ├── BrandLogo.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── FileUploader.tsx
+│   │   ├── FileCard.tsx
+│   │   ├── ShareDialog.tsx    # Includes QR code generation
+│   │   └── ...
+│   ├── lib/                   # Utilities & configs
+│   │   ├── auth.ts            # NextAuth configuration
+│   │   ├── prisma.ts          # Prisma client
+│   │   ├── s3.ts              # S3/R2 integration
+│   │   ├── storage.ts         # Supabase storage
+│   │   ├── pins.ts            # PIN hashing & verification
+│   │   └── rateLimit.ts       # Rate limiting
+│   └── types/                 # TypeScript types
+└── tailwind.config.ts         # Tailwind configuration
 ```
 
-### Start
+## API Endpoints
 
-```bash
-npm start
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/signup` | Create new account |
+| `GET/POST` | `/api/auth/[...nextauth]` | NextAuth handlers |
+| `GET` | `/api/dashboard` | Get dashboard stats |
+| `GET` | `/api/files` | List files (with search & sort) |
+| `POST` | `/api/files/upload` | Get upload presigned URL |
+| `POST` | `/api/files/upload/confirm` | Confirm file upload |
+| `DELETE` | `/api/files/[id]` | Delete a file |
+| `POST` | `/api/folders` | Create a folder |
+| `POST` | `/api/share` | Create share link |
+| `GET` | `/api/share` | List share links |
+| `DELETE` | `/api/share/[id]` | Delete share link |
+| `GET` | `/api/download/[token]` | Get file download info |
+| `POST` | `/api/download/[token]` | Verify PIN & download |
+| `GET` | `/api/downloads` | Get download history |
+| `PATCH` | `/api/user/profile` | Update username |
+| `PATCH` | `/api/user/password` | Change password |
+
+## Security
+
+- **Password hashing** - bcrypt with 12 salt rounds
+- **PIN hashing** - bcrypt with 12 salt rounds
+- **Rate limiting** - 5 PIN attempts per 15 minutes per IP
+- **Secure tokens** - 32-byte random share tokens
+- **JWT sessions** - Stateless authentication
+- **Server-side auth** - All file operations verified
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push to GitHub
+2. Import project on [Vercel](https://vercel.com)
+3. Add environment variables
+4. Deploy
+
+The `vercel.json` is pre-configured:
+
+```json
+{
+  "framework": "nextjs",
+  "buildCommand": "prisma generate && next build"
+}
 ```
 
 ### Environment Variables for Production
-
-Ensure these are set in production:
 
 ```env
 NODE_ENV=production
@@ -98,52 +219,26 @@ NEXTAUTH_URL=https://your-domain.com
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 ```
 
-## Project Structure
+## Contributing
 
-```
-cloudshare/
-├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── seed.ts            # Database seeder
-├── src/
-│   ├── app/
-│   │   ├── (auth)/        # Login/signup pages
-│   │   ├── (dashboard)/   # Authenticated pages
-│   │   ├── api/           # API routes
-│   │   └── d/[token]/     # Download page
-│   ├── components/        # React components
-│   ├── hooks/             # Custom hooks
-│   ├── lib/               # Utilities and configs
-│   └── types/             # TypeScript types
-└── public/                # Static assets
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Security Features
-
-- Password hashing with bcrypt (12 rounds)
-- PIN hashing with bcrypt (12 rounds)
-- Rate limiting on PIN verification (5 attempts per 15 minutes)
-- Server-side authorization on all file operations
-- Secure random share tokens (32 bytes)
-- JWT-based session management
-- No sensitive data exposed in URLs
-
-## API Endpoints
-
-- `POST /api/auth/signup` - Create account
-- `POST /api/auth/[...nextauth]` - NextAuth handlers
-- `GET /api/files` - List files
-- `POST /api/files/upload` - Upload file
-- `PATCH /api/files/[id]` - Update file
-- `DELETE /api/files/[id]` - Delete file
-- `POST /api/folders` - Create folder
-- `GET /api/folders` - List folders
-- `POST /api/share` - Create share link
-- `GET /api/share` - List share links
-- `DELETE /api/share/[id]` - Delete share link
-- `GET /api/download/[token]` - Get download info
-- `POST /api/download/[token]` - Download/verify PIN
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Built with Next.js, TypeScript, and Tailwind CSS**
+
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-black?logo=vercel)](https://vercel.com)
+
+</div>
