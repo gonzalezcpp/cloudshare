@@ -4,9 +4,36 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BrandLogo } from '@/components/BrandLogo';
+
+function validateEmail(email: string) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function getPasswordStrength(password: string) {
+  let score = 0;
+  const checks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  };
+
+  Object.values(checks).forEach((v) => { if (v) score++; });
+
+  let label = '';
+  let color = '';
+  if (score <= 2) { label = 'Weak'; color = 'bg-red-500'; }
+  else if (score <= 3) { label = 'Fair'; color = 'bg-amber-500'; }
+  else if (score <= 4) { label = 'Good'; color = 'bg-blue-500'; }
+  else { label = 'Strong'; color = 'bg-green-500'; }
+
+  return { score, label, color, checks };
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,17 +43,71 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+
+  const passwordStrength = getPasswordStrength(password);
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (val && !validateEmail(val)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handleUsernameChange = (val: string) => {
+    setUsername(val);
+    if (val && val.length < 3) {
+      setUsernameError('Username must be at least 3 characters');
+    } else if (val && /[^a-zA-Z0-9_]/.test(val)) {
+      setUsernameError('Username can only contain letters, numbers, and underscores');
+    } else {
+      setUsernameError('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+    if (!validateEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (username.length < 3) {
+      toast.error('Username must be at least 3 characters');
       return;
     }
 
     if (password.length < 8) {
       toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      toast.error('Password must contain at least one uppercase letter');
+      return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+      toast.error('Password must contain at least one lowercase letter');
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      toast.error('Password must contain at least one number');
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      toast.error('Password must contain at least one special character');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -42,7 +123,7 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success('Account created');
+        toast.success('Account created! Please sign in.');
         router.push('/login');
       } else {
         toast.error(data.error || 'Failed to create account');
@@ -56,7 +137,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-4">
-      <div className="w-full max-w-[380px]">
+      <div className="w-full max-w-[400px]">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex mb-6">
             <BrandLogo size="lg" />
@@ -94,6 +175,7 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Username */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Username
@@ -103,14 +185,23 @@ export default function SignupPage() {
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
                   required
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
+                  className={`w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white ${
+                    usernameError ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="johndoe"
                 />
               </div>
+              {usernameError && (
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {usernameError}
+                </p>
+              )}
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Email
@@ -120,14 +211,23 @@ export default function SignupPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleEmailChange(e.target.value)}
                   required
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
+                  className={`w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white ${
+                    emailError ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="you@example.com"
                 />
               </div>
+              {emailError && (
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {emailError}
+                </p>
+              )}
             </div>
 
+            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Password
@@ -154,9 +254,52 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">At least 8 characters</p>
+
+              {/* Password Strength */}
+              {password.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500">Password strength</span>
+                    <span className={`text-xs font-medium ${
+                      passwordStrength.label === 'Weak' ? 'text-red-500' :
+                      passwordStrength.label === 'Fair' ? 'text-amber-500' :
+                      passwordStrength.label === 'Good' ? 'text-blue-500' :
+                      'text-green-500'
+                    }`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                      style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 mt-2">
+                    {[
+                      { label: '8+ characters', check: passwordStrength.checks.length },
+                      { label: 'Uppercase letter', check: passwordStrength.checks.uppercase },
+                      { label: 'Lowercase letter', check: passwordStrength.checks.lowercase },
+                      { label: 'Number', check: passwordStrength.checks.number },
+                      { label: 'Special character', check: passwordStrength.checks.special },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-1">
+                        {item.check ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="h-3 w-3 text-gray-300" />
+                        )}
+                        <span className={`text-[11px] ${item.check ? 'text-green-600' : 'text-gray-400'}`}>
+                          {item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Confirm Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Confirm password
@@ -168,16 +311,24 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
+                  className={`w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white ${
+                    confirmPassword && password !== confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="••••••••"
                 />
               </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Passwords do not match
+                </p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-400 text-white text-sm font-semibold rounded-lg transition-colors"
+              disabled={loading || !validateEmail(email) || password.length < 8}
+              className="w-full py-2.5 px-4 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               {loading ? 'Creating...' : 'Create account'}
             </button>
