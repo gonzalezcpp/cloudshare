@@ -15,14 +15,56 @@ export async function POST(req: Request) {
       );
     }
 
-    const { fileId, folderId, pinProtected, pin, maxDownloads, expiresAt } =
+    const { fileId, folderId, destinationUrl, pinProtected, pin, maxDownloads, expiresAt } =
       await req.json();
 
-    if (!fileId && !folderId) {
+    if (!fileId && !folderId && !destinationUrl) {
       return NextResponse.json(
-        { success: false, error: 'File or folder ID is required' },
+        { success: false, error: 'File, folder, or URL is required' },
         { status: 400 }
       );
+    }
+
+    let cleanUrl: string | null = null;
+    if (destinationUrl) {
+      if (typeof destinationUrl !== 'string' || destinationUrl.length > 2048) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid URL' },
+          { status: 400 }
+        );
+      }
+      let normalized = destinationUrl.trim();
+      if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(normalized)) {
+        normalized = `https://${normalized}`;
+      }
+      try {
+        const parsed = new URL(normalized);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new Error('bad protocol');
+        }
+        const host = parsed.hostname.toLowerCase();
+        if (
+          host === 'localhost' ||
+          host.endsWith('.localhost') ||
+          host === '127.0.0.1' ||
+          host === '0.0.0.0' ||
+          host.startsWith('10.') ||
+          host.startsWith('192.168.') ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+          host === '[::1]'
+        ) {
+          return NextResponse.json(
+            { success: false, error: 'URL must be a public web address' },
+            { status: 400 }
+          );
+        }
+        cleanUrl = parsed.toString();
+      } catch {
+        return NextResponse.json(
+          { success: false, error: 'Invalid URL. Use a full address like https://example.com' },
+          { status: 400 }
+        );
+      }
     }
 
     if (fileId) {
@@ -88,6 +130,34 @@ export async function POST(req: Request) {
       }
     }
 
+    let parsedExpiry: Date | null = null;
+    if (expiresAt) {
+      parsedExpiry = new Date(expiresAt);
+      if (isNaN(parsedExpiry.getTime())) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid expiration date' },
+          { status: 400 }
+        );
+      }
+      if (parsedExpiry.getTime() <= Date.now()) {
+        return NextResponse.json(
+          { success: false, error: 'Expiration must be in the future' },
+          { status: 400 }
+        );
+      }
+    }
+
+    let parsedLimit: number | null = null;
+    if (maxDownloads !== undefined && maxDownloads !== null && maxDownloads !== '') {
+      parsedLimit = Number(maxDownloads);
+      if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 1000000) {
+        return NextResponse.json(
+          { success: false, error: 'Access limit must be a whole number between 1 and 1,000,000' },
+          { status: 400 }
+        );
+      }
+    }
+
     const shareToken = generateShareToken();
     const pinHash = pinProtected && pin ? await hashPin(pin) : null;
 
@@ -95,12 +165,13 @@ export async function POST(req: Request) {
       data: {
         fileId: fileId || null,
         folderId: folderId || null,
+        destinationUrl: cleanUrl,
         ownerId: session.user.id,
         shareToken,
         pinProtected: pinProtected || false,
         pinHash,
-        maxDownloads: maxDownloads || null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        maxDownloads: parsedLimit,
+        expiresAt: parsedExpiry,
       },
     });
 
@@ -116,7 +187,7 @@ export async function POST(req: Request) {
         token: shareToken,
         url,
         pinProtected: shareLink.pinProtected,
-        type: folderId ? 'folder' : 'file',
+        type: cleanUrl ? 'url' : folderId ? 'folder' : 'file',
       },
     });
   } catch (error) {

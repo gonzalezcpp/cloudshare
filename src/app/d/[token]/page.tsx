@@ -18,6 +18,11 @@ import {
   FileText,
   DownloadCloud,
   X,
+  Link2,
+  Clock,
+  Ban,
+  Power,
+  ExternalLink,
 } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils';
 import Link from 'next/link';
@@ -31,16 +36,25 @@ interface SharedFile {
 }
 
 interface ShareInfo {
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'url';
   fileName?: string;
   fileSize?: number | string;
   folderName?: string;
+  hostname?: string;
   fileCount?: number;
   totalSize?: number | string;
   files?: SharedFile[];
   pinProtected: boolean;
   downloads: number;
+  maxDownloads?: number | null;
+  remaining?: number | null;
   expiresAt: string | null;
+}
+
+interface FatalState {
+  code: string;
+  message: string;
+  expiresAt?: string | null;
 }
 
 function getFileExtension(name: string) {
@@ -113,12 +127,15 @@ export default function DownloadPage() {
   const [verifying, setVerifying] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fatal, setFatal] = useState<FatalState | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     fetchShareInfo();
   }, [token]);
+
+  const FATAL_CODES = ['expired', 'limit', 'disabled', 'gone', 'not_found'];
 
   const fetchShareInfo = async () => {
     try {
@@ -127,6 +144,8 @@ export default function DownloadPage() {
 
       if (data.success) {
         setShareInfo(data.data);
+      } else if (data.code && FATAL_CODES.includes(data.code)) {
+        setFatal({ code: data.code, message: data.error || 'Invalid share link', expiresAt: data.expiresAt || null });
       } else {
         setError(data.error || 'Invalid share link');
       }
@@ -156,10 +175,19 @@ export default function DownloadPage() {
       });
 
       if (!verifyResponse.ok) {
-        const verifyData = await verifyResponse.json();
+        const verifyData = await verifyResponse.json().catch(() => ({}));
         // If it's a ZIP response, it's actually a download
         if (verifyResponse.headers.get('content-type')?.includes('application/zip')) {
           return verifyResponse;
+        }
+        if (verifyData.code && FATAL_CODES.includes(verifyData.code)) {
+          setFatal({ code: verifyData.code, message: verifyData.error, expiresAt: verifyData.expiresAt || null });
+          return null;
+        }
+        if (verifyData.code === 'rate_limited') {
+          setLocked(true);
+          setError(verifyData.error || 'Too many failed attempts. Please try again later.');
+          return null;
         }
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
@@ -230,9 +258,59 @@ export default function DownloadPage() {
     }
 
     const verifyData = await response.json();
+    if (verifyData.data?.redirectUrl) {
+      setPin('');
+      setAttempts(0);
+      window.location.href = verifyData.data.redirectUrl;
+      return;
+    }
     const { downloadUrl, fileName } = verifyData.data;
     const finalName = fileName || shareInfo?.fileName || 'download';
     triggerBlobDownload(downloadUrl, finalName);
+  };
+
+  const handleUnlockUrl = async () => {
+    if (shareInfo?.pinProtected && pin.length !== 6) {
+      setError('Please enter the 6-character PIN');
+      return;
+    }
+    setVerifying(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/download/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: shareInfo?.pinProtected ? pin.trim() : undefined }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (data.code && FATAL_CODES.includes(data.code)) {
+          setFatal({ code: data.code, message: data.error, expiresAt: data.expiresAt || null });
+          return;
+        }
+        if (data.code === 'rate_limited') {
+          setLocked(true);
+          setError(data.error);
+          return;
+        }
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          setLocked(true);
+          setError('Too many failed attempts. Please try again later.');
+        } else {
+          setError(data.error || 'Incorrect PIN. Please try again.');
+        }
+        return;
+      }
+      if (data.data?.redirectUrl) {
+        window.location.href = data.data.redirectUrl;
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const handleDownloadFile = async (fileId: string) => {
@@ -255,7 +333,11 @@ export default function DownloadPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
+        if (data.code && FATAL_CODES.includes(data.code)) {
+          setFatal({ code: data.code, message: data.error, expiresAt: data.expiresAt || null });
+          return;
+        }
         setError(data.error || 'Download failed. Please try again.');
         return;
       }
@@ -277,12 +359,36 @@ export default function DownloadPage() {
   const fileType =
     shareInfo && shareInfo.type === 'file'
       ? getFileTypeLabel(shareInfo.fileName || '')
-      : 'Folder';
+      : shareInfo?.type === 'url'
+        ? 'Protected link'
+        : 'Folder';
 
   const ext =
     shareInfo && shareInfo.type === 'file'
       ? getFileExtension(shareInfo.fileName || '')
-      : 'DIR';
+      : shareInfo?.type === 'url'
+        ? 'URL'
+        : 'DIR';
+
+  const fatalMeta: Record<string, { icon: any; bg: string; color: string; title: string }> = {
+    expired: { icon: Clock, bg: 'bg-amber-50', color: 'text-amber-500', title: 'Link Expired' },
+    limit: { icon: Ban, bg: 'bg-red-50', color: 'text-red-500', title: 'Access Limit Reached' },
+    disabled: { icon: Power, bg: 'bg-gray-100', color: 'text-gray-500', title: 'Link Disabled' },
+    gone: { icon: AlertCircle, bg: 'bg-red-50', color: 'text-red-500', title: 'No Longer Available' },
+    not_found: { icon: AlertCircle, bg: 'bg-red-50', color: 'text-red-500', title: 'Link Invalid' },
+  };
+  const activeFatal = fatal ? fatalMeta[fatal.code] || fatalMeta.not_found : null;
+
+  const formatExpiry = (iso?: string | null) =>
+    iso
+      ? new Date(iso).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })
+      : null;
 
   if (loading) {
     return (
@@ -295,7 +401,9 @@ export default function DownloadPage() {
     );
   }
 
-  if (error && !shareInfo) {
+  if (fatal || (error && !shareInfo)) {
+    const FatalIcon = activeFatal?.icon || AlertCircle;
+    const expiryLabel = fatal?.expiresAt ? formatExpiry(fatal.expiresAt) : null;
     return (
       <div className="min-h-screen bg-white">
         <header className="border-b border-gray-100">
@@ -308,18 +416,33 @@ export default function DownloadPage() {
         <div className="flex items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 65px)' }}>
           <div className="w-full max-w-md text-center">
             <div className="bg-white rounded-2xl border border-gray-200 p-10 shadow-sm">
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <AlertCircle className="h-8 w-8 text-red-500" />
+              <div className={`w-16 h-16 ${activeFatal?.bg || 'bg-red-50'} rounded-2xl flex items-center justify-center mx-auto mb-5`}>
+                <FatalIcon className={`h-8 w-8 ${activeFatal?.color || 'text-red-500'}`} />
               </div>
               <h1 className="text-xl font-bold text-[#0f172a] mb-2">
-                Link Invalid
+                {activeFatal?.title || 'Link Invalid'}
               </h1>
-              <p className="text-sm text-gray-500 mb-8 leading-relaxed">{error}</p>
+              <p className="text-sm text-gray-500 mb-2 leading-relaxed">
+                {fatal?.message || error}
+              </p>
+              {fatal?.code === 'expired' && expiryLabel && (
+                <p className="text-sm text-gray-500 mb-6">
+                  This sharing link expired on<br />
+                  <span className="font-semibold text-[#0f172a]">{expiryLabel}</span>
+                </p>
+              )}
+              {fatal?.code === 'limit' && (
+                <p className="text-sm text-gray-500 mb-6">
+                  This sharing link has reached<br />its maximum number of accesses.
+                </p>
+              )}
+              {fatal && fatal.code !== 'expired' && <div className="mb-6" />}
+              {!fatal && <div className="mb-6" />}
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold rounded-xl transition-colors"
               >
-                Go to CloudShare
+                Back to CloudShare
               </Link>
             </div>
           </div>
@@ -360,9 +483,11 @@ export default function DownloadPage() {
           <div className="p-6 pb-5">
             <div className="flex items-start gap-4">
               {/* Icon */}
-              <div className={`w-16 h-16 ${shareInfo?.type === 'folder' ? 'bg-[#7c3aed]/10' : 'bg-[#2563eb]/10'} rounded-2xl flex items-center justify-center flex-shrink-0`}>
+              <div className={`w-16 h-16 ${shareInfo?.type === 'folder' ? 'bg-[#7c3aed]/10' : shareInfo?.type === 'url' ? 'bg-[#10b981]/10' : 'bg-[#2563eb]/10'} rounded-2xl flex items-center justify-center flex-shrink-0`}>
                 {shareInfo?.type === 'folder' ? (
                   <Folder className="h-8 w-8 text-[#7c3aed]" />
+                ) : shareInfo?.type === 'url' ? (
+                  <Link2 className="h-8 w-8 text-[#10b981]" />
                 ) : (
                   <span className="text-sm font-bold text-[#2563eb]">{ext}</span>
                 )}
@@ -373,14 +498,18 @@ export default function DownloadPage() {
                 <h1 className="text-lg font-bold text-[#0f172a] truncate leading-tight">
                   {shareInfo?.type === 'folder'
                     ? shareInfo.folderName
-                    : shareInfo?.fileName}
+                    : shareInfo?.type === 'url'
+                      ? 'Protected Link'
+                      : shareInfo?.fileName}
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
                   {shareInfo?.type === 'folder'
                     ? `${shareInfo.fileCount || 0} files`
-                    : fileType}
+                    : shareInfo?.type === 'url'
+                      ? shareInfo.hostname || 'Shared link'
+                      : fileType}
                 </p>
-                <div className="flex items-center gap-4 mt-2">
+                <div className="flex items-center gap-4 mt-2 flex-wrap">
                   {shareInfo?.type === 'file' && (
                     <span className="flex items-center gap-1 text-xs text-gray-400">
                       <HardDrive className="h-3.5 w-3.5" />
@@ -397,6 +526,17 @@ export default function DownloadPage() {
                     <ArrowDownToLine className="h-3.5 w-3.5" />
                     {shareInfo?.downloads || 0} downloads
                   </span>
+                  {shareInfo?.remaining != null && (
+                    <span className="flex items-center gap-1 text-xs font-medium text-[#2563eb]">
+                      {shareInfo.remaining} accesses remaining
+                    </span>
+                  )}
+                  {shareInfo?.expiresAt && (
+                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <Clock className="h-3.5 w-3.5" />
+                      Expires {formatExpiry(shareInfo.expiresAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -409,11 +549,11 @@ export default function DownloadPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Lock className="h-4 w-4 text-amber-600" />
                   <span className="text-sm font-semibold text-amber-800">
-                    This {shareInfo.type === 'folder' ? 'folder' : 'file'} is PIN protected
+                    This {shareInfo.type === 'folder' ? 'folder' : shareInfo.type === 'url' ? 'link' : 'file'} is PIN protected
                   </span>
                 </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Enter 6-character PIN to download
+                  {shareInfo.type === 'url' ? 'Enter the security PIN to continue' : 'Enter 6-character PIN to download'}
                 </label>
                 <input
                   type="password"
@@ -503,7 +643,32 @@ export default function DownloadPage() {
 
           {/* Download Buttons */}
           <div className="px-6 pb-6">
-            {shareInfo?.type === 'file' ? (
+            {shareInfo?.type === 'url' ? (
+              <div>
+                <button
+                  onClick={handleUnlockUrl}
+                  disabled={verifying || locked || (shareInfo?.pinProtected && pin.length !== 6)}
+                  className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-[#10b981] hover:bg-[#0d9668] disabled:bg-gray-300 text-white text-base font-bold rounded-xl transition-all shadow-lg shadow-[#10b981]/20 hover:shadow-xl hover:shadow-[#10b981]/30 disabled:shadow-none"
+                >
+                  {verifying ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-5 w-5" />
+                      Unlock Link
+                    </>
+                  )}
+                </button>
+                {shareInfo?.remaining != null && (
+                  <p className="text-center text-xs text-gray-400 mt-2">
+                    {shareInfo.remaining} {shareInfo.remaining === 1 ? 'access' : 'accesses'} remaining
+                  </p>
+                )}
+              </div>
+            ) : shareInfo?.type === 'file' ? (
               <button
                 onClick={handleDownload}
                 disabled={verifying || locked || (shareInfo?.pinProtected && pin.length !== 6)}
@@ -562,16 +727,22 @@ export default function DownloadPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mt-4 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-[#0f172a]">
-              {shareInfo?.type === 'folder' ? 'Folder Details' : 'File Details'}
+              {shareInfo?.type === 'folder' ? 'Folder Details' : shareInfo?.type === 'url' ? 'Link Details' : 'File Details'}
             </h2>
           </div>
           <div className="divide-y divide-gray-50">
             <div className="flex items-center justify-between px-6 py-3">
               <span className="text-sm text-gray-500">Name</span>
               <span className="text-sm font-medium text-[#0f172a] truncate max-w-[200px]">
-                {shareInfo?.type === 'folder' ? shareInfo?.folderName : shareInfo?.fileName}
+                {shareInfo?.type === 'folder' ? shareInfo?.folderName : shareInfo?.type === 'url' ? shareInfo?.hostname : shareInfo?.fileName}
               </span>
             </div>
+            {shareInfo?.maxDownloads != null && (
+              <div className="flex items-center justify-between px-6 py-3">
+                <span className="text-sm text-gray-500">Accesses</span>
+                <span className="text-sm font-medium text-[#0f172a]">{shareInfo?.downloads || 0} / {shareInfo.maxDownloads}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between px-6 py-3">
               <span className="text-sm text-gray-500">Type</span>
               <span className="text-sm font-medium text-[#0f172a]">{fileType}</span>

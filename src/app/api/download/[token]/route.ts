@@ -57,33 +57,53 @@ async function loadShareLink(token: string) {
   });
 }
 
-async function assertActive(shareLink: any) {
-  if (!shareLink) {
-    return { error: 'Share link not found', status: 404 as const };
-  }
-  if (shareLink.file?.deletedAt || shareLink.folder?.deletedAt) {
-    return { error: 'Share link no longer available', status: 410 as const };
-  }
-  if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
-    return { error: 'Share link has expired', status: 410 as const };
-  }
-  if (
-    shareLink.maxDownloads &&
-    shareLink.downloadCount >= shareLink.maxDownloads
-  ) {
-    return { error: 'Download limit reached', status: 410 as const };
-  }
-  return { error: null, status: null as null };
+function getShareType(shareLink: any): 'url' | 'folder' | 'file' {
+  if (shareLink.destinationUrl) return 'url';
+  if (shareLink.folderId) return 'folder';
+  return 'file';
 }
 
-async function verifySharePin(shareLink: any, req: Request) {
-  if (!shareLink.pinProtected) return { ok: true };
+// Gate 1-4 (no auth needed): exists, active, resource alive, expiry, limit.
+// Returns { gate } where gate is null when all pass.
+function checkGates(shareLink: any) {
+  if (!shareLink) {
+    return { gate: { code: 'not_found', error: 'Share link not found', status: 404 as const } };
+  }
+  if (!shareLink.isActive) {
+    return { gate: { code: 'disabled', error: 'This link has been disabled by the owner', status: 410 as const } };
+  }
+  if (shareLink.file?.deletedAt || shareLink.folder?.deletedAt) {
+    return { gate: { code: 'gone', error: 'The shared content is no longer available', status: 410 as const } };
+  }
+  if (shareLink.expiresAt && new Date(shareLink.expiresAt).getTime() <= Date.now()) {
+    return {
+      gate: {
+        code: 'expired',
+        error: 'This link has expired',
+        status: 410 as const,
+        expiresAt: shareLink.expiresAt.toISOString(),
+      },
+    };
+  }
+  if (shareLink.maxDownloads != null && shareLink.downloadCount >= shareLink.maxDownloads) {
+    return { gate: { code: 'limit', error: 'This link has reached its maximum number of accesses', status: 410 as const } };
+  }
+  return { gate: null };
+}
 
-  const { pin } = await req.json();
+function remainingAccesses(shareLink: any): number | null {
+  if (shareLink.maxDownloads == null) return null;
+  return Math.max(0, shareLink.maxDownloads - shareLink.downloadCount);
+}
+
+// Gate 5: PIN verification (rate-limited). Returns { ok } — no counter touched.
+async function verifySharePin(shareLink: any, pin: string | undefined, req: Request) {
+  if (!shareLink.pinProtected) return { ok: true as const };
 
   if (!pin || pin.length !== 6) {
     return {
-      ok: false,
+      ok: false as const,
+      code: 'pin_required',
       error: 'PIN must be exactly 6 characters',
       status: 400 as const,
     };
@@ -99,7 +119,8 @@ async function verifySharePin(shareLink: any, req: Request) {
 
   if (!allowed) {
     return {
-      ok: false,
+      ok: false as const,
+      code: 'rate_limited',
       error: 'Too many failed attempts. Please try again later.',
       status: 429 as const,
     };
@@ -111,14 +132,32 @@ async function verifySharePin(shareLink: any, req: Request) {
 
   if (!isValid) {
     return {
-      ok: false,
+      ok: false as const,
+      code: 'pin_invalid',
       error: 'Incorrect PIN. Please try again.',
       status: 401 as const,
       remaining,
     };
   }
 
-  return { ok: true };
+  return { ok: true as const };
+}
+
+// Gate 7: atomic conditional increment. Only one winner per remaining slot,
+// so concurrent requests can never exceed the limit.
+async function recordAccess(shareLink: any): Promise<boolean> {
+  if (shareLink.maxDownloads == null) {
+    await prisma.shareLink.update({
+      where: { id: shareLink.id },
+      data: { downloadCount: { increment: 1 } },
+    });
+    return true;
+  }
+  const updated = await prisma.shareLink.updateMany({
+    where: { id: shareLink.id, downloadCount: { lt: shareLink.maxDownloads } },
+    data: { downloadCount: { increment: 1 } },
+  });
+  return updated.count === 1;
 }
 
 function getClientIp(req: Request) {
@@ -135,13 +174,38 @@ export async function GET(
 ) {
   try {
     const shareLink = await loadShareLink(params.token);
-    const active = await assertActive(shareLink);
+    const { gate } = checkGates(shareLink);
 
-    if (active.error || !shareLink) {
+    if (gate || !shareLink) {
       return NextResponse.json(
-        { success: false, error: active.error || 'Share link not found' },
-        { status: active.status || 404 }
+        {
+          success: false,
+          error: gate?.error || 'Share link not found',
+          code: gate?.code || 'not_found',
+          ...(gate && 'expiresAt' in gate ? { expiresAt: (gate as any).expiresAt } : {}),
+        },
+        { status: gate?.status || 404 }
       );
+    }
+
+    const base = {
+      pinProtected: shareLink.pinProtected,
+      downloads: shareLink.downloadCount,
+      maxDownloads: shareLink.maxDownloads,
+      remaining: remainingAccesses(shareLink),
+      expiresAt: shareLink.expiresAt?.toISOString() || null,
+    };
+
+    // URL shares: NEVER expose destinationUrl before authorization.
+    if (getShareType(shareLink) === 'url') {
+      let hostname = 'Shared link';
+      try {
+        hostname = new URL(shareLink.destinationUrl!).hostname;
+      } catch {}
+      return NextResponse.json({
+        success: true,
+        data: { ...base, type: 'url', hostname },
+      });
     }
 
     if (shareLink.folderId && shareLink.folder) {
@@ -162,11 +226,9 @@ export async function GET(
       return NextResponse.json({
         success: true,
         data: {
+          ...base,
           type: 'folder',
           folderName: shareLink.folder.name,
-          pinProtected: shareLink.pinProtected,
-          downloads: shareLink.downloadCount,
-          expiresAt: shareLink.expiresAt?.toISOString() || null,
           fileCount: files.length,
           totalSize: totalSize.toString(),
           files,
@@ -176,7 +238,7 @@ export async function GET(
 
     if (!shareLink.file) {
       return NextResponse.json(
-        { success: false, error: 'File not found' },
+        { success: false, error: 'File not found', code: 'gone' },
         { status: 404 }
       );
     }
@@ -184,18 +246,16 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
+        ...base,
         type: 'file',
         fileName: shareLink.file.originalName,
         fileSize: shareLink.file.size.toString(),
-        pinProtected: shareLink.pinProtected,
-        downloads: shareLink.downloadCount,
-        expiresAt: shareLink.expiresAt?.toISOString() || null,
       },
     });
   } catch (error) {
     console.error('Get share info error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to get share info' },
+      { success: false, error: 'Failed to get share info', code: 'server_error' },
       { status: 500 }
     );
   }
@@ -224,30 +284,57 @@ export async function POST(
 ) {
   try {
     const shareLink = await loadShareLink(params.token);
-    const active = await assertActive(shareLink);
 
-    if (active.error || !shareLink) {
+    // Gates 1-4 first: no counter touched for invalid/expired/limited links.
+    const { gate } = checkGates(shareLink);
+    if (gate || !shareLink) {
       return NextResponse.json(
-        { success: false, error: active.error || 'Share link not found' },
-        { status: active.status || 404 }
+        {
+          success: false,
+          error: gate?.error || 'Share link not found',
+          code: gate?.code || 'not_found',
+          ...(gate && 'expiresAt' in gate ? { expiresAt: (gate as any).expiresAt } : {}),
+        },
+        { status: gate?.status || 404 }
       );
     }
 
-    const pinResult = await verifySharePin(shareLink, req);
+    // Parse body ONCE (Request bodies are single-use).
+    const body = await req.json().catch(() => ({}));
+    const { pin, fileId, mode } = body;
+
+    // Gate 5: PIN. Failed auth never increments the counter.
+    const pinResult = await verifySharePin(shareLink, pin, req);
     if (!pinResult.ok) {
       return NextResponse.json(
-        { success: false, error: pinResult.error, remaining: pinResult.remaining },
+        {
+          success: false,
+          error: pinResult.error,
+          code: (pinResult as any).code || 'pin_invalid',
+          remaining: (pinResult as any).remaining,
+        },
         { status: pinResult.status }
       );
     }
 
-    const body = await req.json().catch(() => ({}));
-    const { fileId, mode } = body;
+    // Gate 7: atomic access recording. Loser of a race gets limit error.
+    const counted = await recordAccess(shareLink);
+    if (!counted) {
+      return NextResponse.json(
+        { success: false, error: 'This link has reached its maximum number of accesses', code: 'limit' },
+        { status: 410 }
+      );
+    }
 
-    await prisma.shareLink.update({
-      where: { id: shareLink.id },
-      data: { downloadCount: { increment: 1 } },
-    });
+    const type = getShareType(shareLink);
+
+    // URL share: authorized — reveal destination now.
+    if (type === 'url') {
+      return NextResponse.json({
+        success: true,
+        data: { redirectUrl: shareLink.destinationUrl },
+      });
+    }
 
     // Folder share ZIP download
     if (shareLink.folderId && mode === 'zip') {
@@ -255,7 +342,7 @@ export async function POST(
 
       if (files.length === 0) {
         return NextResponse.json(
-          { success: false, error: 'Folder is empty' },
+          { success: false, error: 'Folder is empty', code: 'gone' },
           { status: 400 }
         );
       }
@@ -265,17 +352,6 @@ export async function POST(
       }
 
       try {
-        const archiver = (await import('archiver')) as unknown as (
-          options?: any
-        ) => any;
-        const { Readable } = await import('stream');
-        const { createClient } = await import('@supabase/supabase-js');
-
-        const isNode = typeof process !== 'undefined' && !('EdgeRuntime' in (globalThis as any));
-        if (!isNode) {
-          throw new Error('Node runtime required for ZIP');
-        }
-
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
         const bucket = process.env.SUPABASE_BUCKET || 'cloudshare-files';
@@ -284,7 +360,6 @@ export async function POST(
           throw new Error('Supabase not configured');
         }
 
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const archiverFn = (await import('archiver')) as unknown as (...args: any[]) => any;
         const archive = archiverFn('zip', { zlib: { level: 6 } });
 
@@ -329,7 +404,7 @@ export async function POST(
 
         if (validFiles.length === 0) {
           return NextResponse.json(
-            { success: false, error: 'Could not load any files for download' },
+            { success: false, error: 'Could not load any files for download', code: 'server_error' },
             { status: 500 }
           );
         }
@@ -361,7 +436,7 @@ export async function POST(
       } catch (error) {
         console.error('ZIP creation error:', error);
         return NextResponse.json(
-          { success: false, error: 'Failed to create ZIP download' },
+          { success: false, error: 'Failed to create ZIP download', code: 'server_error' },
           { status: 500 }
         );
       }
@@ -380,7 +455,7 @@ export async function POST(
 
       if (!file) {
         return NextResponse.json(
-          { success: false, error: 'File not found in folder' },
+          { success: false, error: 'File not found in folder', code: 'gone' },
           { status: 404 }
         );
       }
@@ -401,7 +476,7 @@ export async function POST(
     // File share (single file)
     if (!shareLink.file) {
       return NextResponse.json(
-        { success: false, error: 'File not found' },
+        { success: false, error: 'File not found', code: 'gone' },
         { status: 404 }
       );
     }
@@ -420,7 +495,7 @@ export async function POST(
   } catch (error) {
     console.error('Download error:', error);
     return NextResponse.json(
-      { success: false, error: 'Download failed' },
+      { success: false, error: 'Download failed', code: 'server_error' },
       { status: 500 }
     );
   }
