@@ -25,6 +25,17 @@ model User {
   @@map("users")
 }
 
+model VerificationCode {
+  id            String    @id @default(cuid())
+  email         String
+  code          String
+  expiresAt     DateTime  @map("expires_at")
+  used          Boolean   @default(false)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("verification_codes")
+}
+
 model File {
   id            String    @id @default(cuid())
   ownerId       String    @map("owner_id")

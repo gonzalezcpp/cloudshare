@@ -19,7 +19,7 @@ function validatePassword(password: string) {
 
 export async function POST(req: Request) {
   try {
-    const { username, email, password } = await req.json();
+    const { username, email, password, emailVerified } = await req.json();
 
     if (!username || !email || !password) {
       return NextResponse.json(
