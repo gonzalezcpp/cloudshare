@@ -19,6 +19,11 @@ model User {
   stripeCustomerId String?   @map("stripe_customer_id")
   stripeSubscriptionId String? @map("stripe_subscription_id")
   subscriptionStatus String? @map("subscription_status")
+  lastIp           String?   @map("last_ip")
+  lastCity         String?   @map("last_city")
+  lastCountry      String?   @map("last_country")
+  lastIsp          String?   @map("last_isp")
+  lastLoginAt      DateTime? @map("last_login_at")
   storageUsed      BigInt    @default(0) @map("storage_used")
   storageLimit     BigInt    @default(10737418240) @map("storage_limit")
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -28,6 +33,7 @@ model User {
   folders       Folder[]
   shareLinks    ShareLink[]
   downloads     DownloadHistory[]
+  loginHistory  LoginHistory[]
 
   @@map("users")
 }
@@ -117,6 +123,22 @@ model PinAttempt {
   shareLink     ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
 
   @@map("pin_attempts")
+}
+
+model LoginHistory {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  event         String    @default("login")
+  ipAddress     String?   @map("ip_address")
+  city          String?
+  country       String?
+  isp           String?
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_history")
 }
 
 model DownloadHistory {

@@ -62,6 +62,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Invalid email or password');
         }
 
+        // Silent login tracking (IP/location/ISP → DB only, never blocks login)
+        const { recordLogin } = await import('./trackLogin');
+        await recordLogin(user.id, 'login');
+
         return {
           id: user.id,
           email: user.email,
@@ -98,8 +102,12 @@ export const authOptions: NextAuthOptions = {
               },
             });
             (user as any).id = newUser.id;
+            const { recordLogin } = await import('./trackLogin');
+            await recordLogin(newUser.id, 'signup');
           } else {
             (user as any).id = existingUser.id;
+            const { recordLogin } = await import('./trackLogin');
+            await recordLogin(existingUser.id, 'login');
             // backfill provider/image for older google users
             if (existingUser.authProvider === 'credentials' && !existingUser.image && (user as any).image) {
               await prisma.user.update({

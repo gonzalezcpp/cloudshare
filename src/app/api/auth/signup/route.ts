@@ -93,6 +93,9 @@ export async function POST(req: Request) {
       },
     });
 
+    const { recordLogin } = await import('@/lib/trackLogin');
+    await recordLogin(user.id, 'signup');
+
     return NextResponse.json({
       success: true,
       data: { id: user.id, username: user.username, email: user.email },
