@@ -35,6 +35,7 @@ model User {
   shareLinks    ShareLink[]
   downloads     DownloadHistory[]
   loginHistory  LoginHistory[]
+  devices       DeviceInfo[]
 
   @@map("users")
 }
@@ -141,6 +142,27 @@ model LoginHistory {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("login_history")
+}
+
+model DeviceInfo {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  os            String?
+  osVersion     String?   @map("os_version")
+  arch          String?
+  browser       String?
+  cpuCores      Int?      @map("cpu_cores")
+  ramGb         Float?    @map("ram_gb")
+  gpu           String?
+  screen        String?
+  timezone      String?
+  language      String?
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("device_info")
 }
 
 model DownloadHistory {
