@@ -16,12 +16,23 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [billing, setBilling] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [isGoogleOnly, setIsGoogleOnly] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
     fetch('/api/billing/status')
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setBilling(d.data);
+      })
+      .catch(() => {});
+    fetch('/api/user/me')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setIsGoogleOnly(d.data.authProvider === 'google');
       })
       .catch(() => {});
     if (typeof window !== 'undefined' && window.location.search.includes('upgraded=1')) {
@@ -77,16 +88,56 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startResendTimer = () => {
+    setResendTimer(60);
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
+  const handleSendOtp = async () => {
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-
     if (newPassword.length < 8) {
       toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (!isGoogleOnly && !currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
+    setOtpSending(true);
+    try {
+      const res = await fetch('/api/user/password/request', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setOtpSent(true);
+        setOtp('');
+        startResendTimer();
+        toast.success(`OTP sent to ${session?.user?.email}`);
+      } else {
+        toast.error(data.error || 'Failed to send OTP');
+      }
+    } catch {
+      toast.error('Failed to send OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (otp.replace(/\D/g, '').length !== 6) {
+      toast.error('Please enter the 6-digit OTP from your email');
       return;
     }
 
@@ -96,7 +147,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/password', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword, otp: otp.replace(/\D/g, '') }),
       });
 
       const data = await response.json();
@@ -106,6 +157,14 @@ export default function SettingsPage() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        setOtp('');
+        setOtpSent(false);
+        fetch('/api/user/me')
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) setIsGoogleOnly(d.data.authProvider === 'google');
+          })
+          .catch(() => {});
       } else {
         toast.error(data.error || 'Failed to change password');
       }
@@ -234,19 +293,25 @@ export default function SettingsPage() {
           </h2>
         </div>
 
+        <p className="-mt-2 mb-4 text-xs text-gray-400">
+          For security, we email a 6-digit OTP to <span className="font-medium text-gray-600">{session?.user?.email}</span> to confirm the change.
+        </p>
+
         <form onSubmit={handleChangePassword} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Current Password
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
-            />
-          </div>
+          {!isGoogleOnly && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -277,14 +342,57 @@ export default function SettingsPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
-          >
-            <Lock className="h-4 w-4" />
-            {loading ? 'Changing...' : 'Change Password'}
-          </button>
+          {!otpSent ? (
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              disabled={otpSending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <Lock className="h-4 w-4" />
+              {otpSending ? 'Sending OTP...' : 'Send OTP to my email'}
+            </button>
+          ) : (
+            <>
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-700">
+                  OTP sent to <span className="font-semibold">{session?.user?.email}</span>. It expires in 10 minutes.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email OTP
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                  placeholder="------"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-center font-mono text-lg tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent bg-white"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  <Lock className="h-4 w-4" />
+                  {loading ? 'Verifying...' : 'Verify OTP & Change Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={otpSending || resendTimer > 0}
+                  className="px-4 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {resendTimer > 0 ? `Resend (${resendTimer}s)` : 'Resend'}
+                </button>
+              </div>
+            </>
+          )}
         </form>
       </div>
     </div>

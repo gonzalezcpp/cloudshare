@@ -15,7 +15,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const { currentPassword, newPassword } = await req.json();
+    const { currentPassword, newPassword, otp } = await req.json();
 
     if (!newPassword) {
       return NextResponse.json(
@@ -31,6 +31,13 @@ export async function PATCH(req: Request) {
       );
     }
 
+    if (!otp || String(otp).length !== 6) {
+      return NextResponse.json(
+        { success: false, error: 'A valid 6-digit OTP is required' },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
     });
@@ -41,6 +48,29 @@ export async function PATCH(req: Request) {
         { status: 404 }
       );
     }
+
+    // Verify OTP sent to the account email
+    const record = await prisma.verificationCode.findFirst({
+      where: {
+        email: user.email.toLowerCase(),
+        code: String(otp),
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!record) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired OTP. Please request a new one.' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.verificationCode.update({
+      where: { id: record.id },
+      data: { used: true },
+    });
 
     const isGoogleOnly = user.passwordHash.startsWith('google-oauth');
 
