@@ -1,19 +1,22 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not set');
-  }
-  return new Resend(apiKey);
-}
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
   try {
-    const resend = getResendClient();
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('GMAIL_USER or GMAIL_APP_PASSWORD not set');
+      return false;
+    }
 
-    const result = await resend.emails.send({
-      from: 'CloudShare <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: `"CloudShare" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: `Your CloudShare verification code: ${code}`,
       html: `
@@ -29,11 +32,16 @@ export async function sendVerificationEmail(email: string, code: string): Promis
             </div>
             <p style="margin:0;font-size:12px;color:#94a3b8;">This code expires in 10 minutes</p>
           </div>
+          <div style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
+              If you didn't request this, you can safely ignore this email.
+            </p>
+          </div>
         </div>
       `,
     });
 
-    console.log('Resend result:', result);
+    console.log('Verification email sent to:', email);
     return true;
   } catch (error) {
     console.error('Failed to send verification email:', error);
