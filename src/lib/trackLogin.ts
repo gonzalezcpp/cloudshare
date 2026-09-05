@@ -42,15 +42,37 @@ function isPrivateIp(ip: string): boolean {
   );
 }
 
-// Free geo lookup, no API key. Never throws — returns nulls on failure.
+// Free geo lookups, no API key. Tries two providers in order.
+// Never throws — returns nulls only if both fail.
 async function lookupGeo(ip: string): Promise<{ city: string | null; country: string | null; isp: string | null }> {
   const empty = { city: null, country: null, isp: null };
   if (isPrivateIp(ip)) {
     return { city: 'Local', country: 'Local', isp: 'Local network' };
   }
+
+  // Provider 1: ipwho.is (generous free tier, fast)
+  try {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.success) {
+        return {
+          city: data?.city || null,
+          country: data?.country || null,
+          isp: data?.connection?.isp || data?.connection?.org || null,
+        };
+      }
+    }
+  } catch {
+    // fall through to provider 2
+  }
+
+  // Provider 2: ipapi.co (fallback)
   try {
     const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return empty;
     const data = await res.json();
