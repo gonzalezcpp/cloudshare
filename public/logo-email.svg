@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Cloud shape -->
+  <path d="M90 72c0-1.1-.1-2.2-.2-3.3C89.1 54.6 79.5 45 67.5 45c-1.4 0-2.8.1-4.1.4C60.3 36.5 51.4 30 41 30c-14.4 0-26 11.6-26 26 0 .7.1 1.4.1 2.1C8.5 61.3 3 68.3 3 76.5 3 86.2 10.8 94 20.5 94h63c9.7 0 17.5-7.8 17.5-17.5 0-8.2-5.7-15.1-13.3-16.8-.5-1.6-.7-3.2-.7-4.7z" fill="url(#grad)" opacity="0.15"/>
+  <!-- Share icon - node 1 (bottom left) -->
+  <circle cx="38" cy="72" r="7" fill="url(#grad)"/>
+  <!-- Share icon - node 2 (top) -->
+  <circle cx="60" cy="44" r="7" fill="url(#grad)"/>
+  <!-- Share icon - node 3 (bottom right) -->
+  <circle cx="82" cy="72" r="7" fill="url(#grad)"/>
+  <!-- Connecting lines -->
+  <line x1="43" y1="67" x2="55" y2="49" stroke="url(#grad)" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="65" y1="49" x2="77" y2="67" stroke="url(#grad)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Cloud outline -->
+  <path d="M88 74c0-.8-.1-1.6-.2-2.4C87 58.6 78.6 50 68 50c-1 0-2 .1-3 .3C62.8 43.3 55 38 46 38c-12 0-21.5 9.5-21.5 21.5 0 .5.1 1 .1 1.5C16 62.5 11 68.5 11 75.5 11 83.5 17.5 90 25.5 90h57c8 0 14.5-6.5 14.5-14.5 0-6.8-4.7-12.5-11-13.8-.3-1.1-.5-2.2-.5-3.2z" fill="none" stroke="url(#grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
