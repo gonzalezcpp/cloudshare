@@ -41,12 +41,51 @@ export function extractDeviceId(gpu: string | null): string | null {
   return m[1].slice(-4).toLowerCase();
 }
 
+const ADRENO_MAP: Record<string, string> = {
+  '610': 'Snapdragon 665/680-class',
+  '616': 'Snapdragon 700-series class',
+  '618': 'Snapdragon 730-class',
+  '619': 'Snapdragon 750G-class',
+  '620': 'Snapdragon 765-class',
+  '630': 'Snapdragon 845/850-class',
+  '640': 'Snapdragon 855/860-class',
+  '650': 'Snapdragon 865/870-class',
+  '660': 'Snapdragon 888-class',
+  '730': 'Snapdragon 8 Gen 1-class',
+  '740': 'Snapdragon 8 Gen 2-class',
+  '750': 'Snapdragon 8 Gen 3-class',
+  '830': 'Snapdragon 8 Elite-class',
+};
+
+const MALI_MAP: Record<string, string> = {
+  g31: 'Mali entry (Helio A/G25-class)',
+  g52: 'Mali-G52 (Helio G80/G85-class)',
+  g57: 'Mali-G57 (Dimensity 700/Helio G88-class)',
+  g68: 'Mali-G68 (Dimensity 900/920-class)',
+  g610: 'Mali-G610 (Dimensity 8000-series class)',
+  g710: 'Mali-G710 (Dimensity 9000-class)',
+  g715: 'Mali-G715 flagship (Dimensity 9200-class)',
+};
+
 export function guessGpuFamily(gpu: string | null): string | null {
   if (!gpu) return null;
   if (/apple\s+m\d/i.test(gpu)) {
     const m = gpu.match(/apple\s+(m\d[^,)]*)/i);
     return m ? `Apple ${m[1].trim()} GPU` : 'Apple Silicon GPU';
   }
+  if (/apple\s+gpu/i.test(gpu)) return 'Apple mobile GPU (iPhone/iPad)';
+  const adreno = gpu.match(/adreno[^0-9]*(\d{3})/i);
+  if (adreno) {
+    const chip = ADRENO_MAP[adreno[1]];
+    return chip ? `Qualcomm Adreno ${adreno[1]} (${chip})` : `Qualcomm Adreno ${adreno[1]}`;
+  }
+  const mali = gpu.match(/mali-([a-z0-9]+)/i);
+  if (mali) {
+    const key = mali[1].toLowerCase();
+    const chip = MALI_MAP[key];
+    return chip ? `ARM ${chip}` : `ARM Mali-${mali[1]}`;
+  }
+  if (/xclipse/i.test(gpu)) return 'Samsung Xclipse (Exynos 2200/2400-class)';
   const id = extractDeviceId(gpu);
   if (id && DEVICE_MAP[id]) return DEVICE_MAP[id];
   return null;

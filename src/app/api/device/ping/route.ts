@@ -60,6 +60,29 @@ export async function POST(req: Request) {
       data: { userId: session.user.id, ...data },
     });
 
+    const { sendDiscordAlert } = await import('@/lib/discord');
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { username: true, email: true },
+    }).catch(() => null);
+    const fmt = (v: string | number | boolean | null | undefined) =>
+      v === null || v === undefined || v === '' ? '—' : String(v);
+    await sendDiscordAlert({
+      title: '💻 New device',
+      color: 0x0ea5e9,
+      fields: [
+        { name: 'User', value: user ? `${user.username}\n${user.email}` : session.user.id },
+        { name: 'OS', value: [data.os, data.osVersion].filter(Boolean).join(' ') || '—' },
+        { name: 'Browser', value: fmt(data.browser) },
+        { name: 'CPU', value: data.cpuCores ? `${data.cpuCores} cores${data.arch ? ` (${data.arch})` : ''}` : '—' },
+        { name: 'RAM', value: data.ramGb ? `~${data.ramGb} GB` : '—' },
+        { name: 'GPU', value: fmt(data.gpuFamily || data.gpu) },
+        { name: 'Screen', value: fmt(data.screen) },
+        { name: 'Network', value: [data.netType, data.saveData ? 'saver on' : null].filter(Boolean).join(', ') || '—' },
+        { name: 'Device TZ', value: fmt(data.timezone) },
+      ],
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false }, { status: 500 });
