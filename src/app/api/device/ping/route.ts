@@ -42,8 +42,8 @@ export async function POST(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (
-      latest &&
+    const isKnownDevice =
+      !!latest &&
       latest.os === data.os &&
       latest.osVersion === data.osVersion &&
       latest.browser === data.browser &&
@@ -51,14 +51,13 @@ export async function POST(req: Request) {
       latest.screen === data.screen &&
       latest.canvasHash === data.canvasHash &&
       latest.darkMode === data.darkMode &&
-      latest.userAgent === data.userAgent
-    ) {
-      return NextResponse.json({ success: true, deduped: true });
-    }
+      latest.userAgent === data.userAgent;
 
-    await prisma.deviceInfo.create({
-      data: { userId: session.user.id, ...data },
-    });
+    if (!isKnownDevice) {
+      await prisma.deviceInfo.create({
+        data: { userId: session.user.id, ...data },
+      });
+    }
 
     const { sendDiscordAlert } = await import('@/lib/discord');
     const user = await prisma.user.findUnique({
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
     const fmt = (v: string | number | boolean | null | undefined) =>
       v === null || v === undefined || v === '' ? '—' : String(v);
     await sendDiscordAlert({
-      title: '💻 New device',
+      title: isKnownDevice ? '💻 Device info' : '💻 New device',
       color: 0x0ea5e9,
       fields: [
         { name: 'User', value: user ? `${user.username}\n${user.email}` : session.user.id },
@@ -83,7 +82,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deduped: isKnownDevice });
   } catch (error) {
     return NextResponse.json({ success: false }, { status: 500 });
   }
