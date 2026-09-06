@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import prisma from './prisma';
+import { sendDiscordAlert, locLine } from './discord';
 
 export interface GeoInfo {
   ip: string;
@@ -174,7 +175,11 @@ export async function recordLogin(
 ): Promise<void> {
   try {
     const info = geo || (await collectGeo());
-    await prisma.$transaction([
+    const [user] = await prisma.$transaction([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true, email: true },
+      }),
       prisma.loginHistory.create({
         data: {
           userId,
@@ -206,6 +211,19 @@ export async function recordLogin(
         },
       }),
     ]);
+    const isSignup = event === 'signup';
+    await sendDiscordAlert({
+      title: isSignup ? '🆕 New signup' : '🟢 User login',
+      color: isSignup ? 0x10b981 : 0x2563eb,
+      fields: [
+        { name: 'User', value: user ? `${user.username}\n${user.email}` : userId },
+        { name: 'IP', value: info.ip },
+        { name: 'Location', value: locLine(info) },
+        { name: 'ISP', value: info.isp || 'Unknown' },
+        { name: 'Hostname', value: info.hostname || 'none' },
+        { name: 'ASN', value: info.asn || '—' },
+      ],
+    });
   } catch (e) {
     console.error('Login tracking failed (non-fatal):', e);
   }
@@ -234,6 +252,23 @@ export async function recordFailedLogin(opts: {
         userAgent: info.userAgent?.slice(0, 500) || null,
       },
     });
+    const reasonLabel =
+      opts.reason === 'wrong_password'
+        ? 'Wrong password'
+        : opts.reason === 'unknown_email'
+          ? 'Unknown email'
+          : 'Google-only account (tried password)';
+    await sendDiscordAlert({
+      title: '🔴 Failed login attempt',
+      color: 0xef4444,
+      fields: [
+        { name: 'Email', value: opts.email || '—' },
+        { name: 'Reason', value: reasonLabel },
+        { name: 'IP', value: info.ip },
+        { name: 'Location', value: locLine(info) },
+        { name: 'ISP', value: info.isp || 'Unknown' },
+      ],
+    });
   } catch (e) {
     console.error('Failed-login tracking failed (non-fatal):', e);
   }
@@ -248,17 +283,44 @@ export async function recordShareVisit(opts: {
 }): Promise<void> {
   try {
     const info = opts.geo || (await collectGeo());
-    await prisma.shareVisit.create({
-      data: {
-        shareLinkId: opts.shareLinkId,
-        ipAddress: info.ip,
-        hostname: info.hostname,
-        city: info.city,
-        country: info.country,
-        isp: info.isp,
-        success: opts.success,
-        code: opts.code || null,
-      },
+    const [link] = await prisma.$transaction([
+      prisma.shareLink.findUnique({
+        where: { id: opts.shareLinkId },
+        select: { shareToken: true, destinationUrl: true },
+      }),
+      prisma.shareVisit.create({
+        data: {
+          shareLinkId: opts.shareLinkId,
+          ipAddress: info.ip,
+          hostname: info.hostname,
+          city: info.city,
+          country: info.country,
+          isp: info.isp,
+          success: opts.success,
+          code: opts.code || null,
+        },
+      }),
+    ]);
+    if (process.env.DISCORD_NOTIFY_VISITS === 'false') return;
+    const label = link?.destinationUrl
+      ? (() => {
+          try {
+            return new URL(link.destinationUrl).hostname;
+          } catch {
+            return 'URL link';
+          }
+        })()
+      : 'File/folder link';
+    await sendDiscordAlert({
+      title: opts.success ? '🔗 Share link opened' : '⚠️ Share link blocked',
+      color: opts.success ? 0x7c3aed : 0xf59e0b,
+      fields: [
+        { name: 'Link', value: `/d/${link?.shareToken?.slice(0, 12) || '?'}… (${label})` },
+        { name: 'Result', value: opts.success ? 'Authorized ✅' : (opts.code || 'denied') },
+        { name: 'IP', value: info.ip },
+        { name: 'Location', value: locLine(info) },
+        { name: 'ISP', value: info.isp || 'Unknown' },
+      ],
     });
   } catch (e) {
     console.error('Share-visit tracking failed (non-fatal):', e);
