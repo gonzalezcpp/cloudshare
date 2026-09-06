@@ -40,6 +40,13 @@ export async function DELETE(
       where: { id: params.token },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'share_deleted',
+      resource: shareLink.id,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete share link error:', error);
@@ -151,6 +158,15 @@ export async function PATCH(
     const updated = await prisma.shareLink.update({
       where: { id: params.token },
       data: updateData,
+    });
+
+    const { logActivity } = await import('@/lib/activity');
+    const changed = Object.keys(updateData);
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'isActive' in updateData && updateData.isActive === false ? 'share_disabled' : 'share_updated',
+      resource: updated.id,
+      metadata: { changed },
     });
 
     return NextResponse.json({

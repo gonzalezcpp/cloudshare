@@ -58,6 +58,15 @@ export async function POST(req: Request) {
       },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'file_upload',
+      resource: dbFile.id,
+      resourceName: originalName,
+      metadata: { size: Number(fileSize), mimeType: fileType || null, folderId: folderId || null },
+    });
+
     return NextResponse.json({
       success: true,
       data: {

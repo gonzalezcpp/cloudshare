@@ -77,6 +77,13 @@ export async function DELETE(req: Request) {
       data: { storageUsed: Math.max(0, Number(user?.storageUsed || 0) - freed) },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'trash_emptied',
+      metadata: { files: trashedFiles.length, freedBytes: freed },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Empty trash error:', error);

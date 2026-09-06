@@ -36,6 +36,7 @@ model User {
   downloads     DownloadHistory[]
   loginHistory  LoginHistory[]
   devices       DeviceInfo[]
+  activity      UserActivity[]
 
   @@map("users")
 }
@@ -184,6 +185,24 @@ model ShareVisit {
 
   @@index([shareLinkId])
   @@map("share_visits")
+}
+
+model UserActivity {
+  id            String    @id @default(cuid())
+  userId        String?   @map("user_id")
+  eventType     String    @map("event_type")
+  resource      String?
+  resourceName  String?   @map("resource_name")
+  ip            String?
+  userAgent     String?   @map("user_agent")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+  @@map("user_activity")
 }
 
 model DeviceInfo {

@@ -38,6 +38,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Invalid type' }, { status: 400 });
     }
 
+    const { logActivity } = await import('@/lib/activity');
     if (type === 'file') {
       const file = await prisma.file.findUnique({ where: { id } });
       if (!file || file.ownerId !== session.user.id) {
@@ -49,6 +50,7 @@ export async function DELETE(
         where: { id: session.user.id },
         data: { storageUsed: Math.max(0, Number(user?.storageUsed || 0) - Number(file.size)) },
       });
+      await logActivity({ userId: session.user.id, eventType: 'file_delete', resource: id, resourceName: file.originalName, metadata: { permanent: true, fromTrash: true } });
     } else {
       const folder = await prisma.folder.findUnique({
         where: { id },
@@ -70,6 +72,7 @@ export async function DELETE(
           data: { storageUsed: Math.max(0, Number(user?.storageUsed || 0) - freed) },
         });
       }
+      await logActivity({ userId: session.user.id, eventType: 'folder_delete', resource: id, resourceName: folder.name, metadata: { permanent: true, fromTrash: true } });
     }
 
     return NextResponse.json({ success: true });

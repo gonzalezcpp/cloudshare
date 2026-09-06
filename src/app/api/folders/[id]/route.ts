@@ -31,6 +31,13 @@ export async function DELETE(
         where: { folderId: params.id, deletedAt: null },
         data: { deletedAt: new Date() },
       });
+      const { logActivity } = await import('@/lib/activity');
+      await logActivity({
+        userId: session.user.id,
+        eventType: 'folder_trash',
+        resource: folder.id,
+        resourceName: folder.name,
+      });
       return NextResponse.json({ success: true, trashed: true });
     }
 
@@ -48,6 +55,14 @@ export async function DELETE(
       await prisma.file.delete({ where: { id: f.id } });
     }
     await prisma.folder.delete({ where: { id: params.id } });
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'folder_delete',
+      resource: folder.id,
+      resourceName: folder.name,
+      metadata: { permanent: true },
+    });
     return NextResponse.json({ success: true, trashed: false });
   } catch (error) {
     console.error('Delete folder error:', error);

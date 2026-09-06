@@ -44,6 +44,14 @@ export async function POST(req: Request) {
       },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'folder_created',
+      resource: folder.id,
+      resourceName: folder.name,
+    });
+
     return NextResponse.json({
       success: true,
       data: { id: folder.id, name: folder.name },

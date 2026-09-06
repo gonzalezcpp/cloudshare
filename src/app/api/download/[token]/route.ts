@@ -286,11 +286,19 @@ export async function POST(
   try {
     const shareLink = await loadShareLink(params.token);
 
+    const { logActivity } = await import('@/lib/activity');
+
     // Gates 1-4 first: no counter touched for invalid/expired/limited links.
     const { gate } = checkGates(shareLink);
     if (gate || !shareLink) {
       if (shareLink) {
         await recordShareVisit({ shareLinkId: shareLink.id, success: false, code: gate?.code || 'not_found' });
+        await logActivity({
+          userId: shareLink.ownerId,
+          eventType: 'share_blocked',
+          resource: shareLink.id,
+          metadata: { code: gate?.code || 'not_found' },
+        });
       }
       return NextResponse.json(
         {
@@ -316,6 +324,11 @@ export async function POST(
     const pinResult = await verifySharePin(shareLink, pin, req);
     if (!pinResult.ok) {
       await logVisit(false, (pinResult as any).code || 'pin_invalid');
+      await logActivity({
+        userId: shareLink.ownerId,
+        eventType: 'share_pin_failed',
+        resource: shareLink.id,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -342,6 +355,16 @@ export async function POST(
     // URL share: authorized — reveal destination now.
     if (type === 'url') {
       await logVisit(true);
+      let host: string | null = null;
+      try {
+        host = new URL(shareLink.destinationUrl!).hostname;
+      } catch {}
+      await logActivity({
+        userId: shareLink.ownerId,
+        eventType: 'share_opened',
+        resource: shareLink.id,
+        resourceName: host,
+      });
       return NextResponse.json({
         success: true,
         data: { redirectUrl: shareLink.destinationUrl },
@@ -440,6 +463,13 @@ export async function POST(
         const sanitized = folderName.replace(/[^\w\-]+/g, '_');
 
         await logVisit(true);
+        await logActivity({
+          userId: shareLink.ownerId,
+          eventType: 'file_download',
+          resource: shareLink.id,
+          resourceName: `${folderName}.zip`,
+          metadata: { kind: 'folder_zip', files: validFiles.length },
+        });
 
         return new NextResponse(new Uint8Array(zipBuffer), {
           headers: {
@@ -478,6 +508,13 @@ export async function POST(
 
       await logDownload(shareLink, file, req);
       await logVisit(true);
+      await logActivity({
+        userId: shareLink.ownerId,
+        eventType: 'file_download',
+        resource: file.id,
+        resourceName: file.originalName,
+        metadata: { viaShare: shareLink.id },
+      });
 
       const { downloadUrl, mimeType } = await resolveDownloadUrl(file);
       return NextResponse.json({
@@ -501,6 +538,13 @@ export async function POST(
 
     await logDownload(shareLink, shareLink.file, req);
     await logVisit(true);
+    await logActivity({
+      userId: shareLink.ownerId,
+      eventType: 'file_download',
+      resource: shareLink.file.id,
+      resourceName: shareLink.file.originalName,
+      metadata: { viaShare: shareLink.id },
+    });
 
     const { downloadUrl, mimeType } = await resolveDownloadUrl(shareLink.file);
     return NextResponse.json({

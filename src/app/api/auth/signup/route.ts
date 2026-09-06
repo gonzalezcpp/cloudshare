@@ -95,6 +95,8 @@ export async function POST(req: Request) {
 
     const { recordLogin } = await import('@/lib/trackLogin');
     await recordLogin(user.id, 'signup');
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({ userId: user.id, eventType: 'signup', metadata: { method: 'email' } });
 
     return NextResponse.json({
       success: true,

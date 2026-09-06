@@ -1,6 +1,6 @@
-import { User, File, Folder, ShareLink, PinAttempt, DownloadHistory } from '@prisma/client';
+import { User, File, Folder, ShareLink, PinAttempt, DownloadHistory, UserActivity } from '@prisma/client';
 
-export type { User, File, Folder, ShareLink, PinAttempt, DownloadHistory };
+export type { User, File, Folder, ShareLink, PinAttempt, DownloadHistory, UserActivity };
 
 export interface DownloadHistoryItem {
   id: string;

@@ -70,6 +70,9 @@ export async function POST(req: Request) {
       },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({ userId: user.id, eventType: 'password_reset' });
+
     return NextResponse.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     console.error('Forgot password reset error:', error);

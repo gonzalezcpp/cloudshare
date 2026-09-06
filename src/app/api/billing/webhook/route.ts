@@ -23,6 +23,7 @@ async function applySubscription(opts: {
   const plan = opts.plan === 'business' ? 'business' : opts.plan === 'pro' ? 'pro' : active ? user.plan : 'free';
   const finalPlan = active ? plan : 'free';
 
+  const previousPlan = user.plan;
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -32,6 +33,14 @@ async function applySubscription(opts: {
       subscriptionStatus: opts.status || user.subscriptionStatus,
     },
   });
+  if (previousPlan !== finalPlan) {
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: user.id,
+      eventType: 'plan_changed',
+      metadata: { from: previousPlan, to: finalPlan },
+    });
+  }
 }
 
 export async function POST(req: Request) {

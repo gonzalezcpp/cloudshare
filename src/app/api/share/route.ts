@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       }
     }
 
+    let sharedName: string | null = null;
     if (fileId) {
       const file = await prisma.file.findUnique({
         where: { id: fileId },
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
+      sharedName = file.originalName;
     }
 
     if (folderId) {
@@ -104,6 +106,15 @@ export async function POST(req: Request) {
           { success: false, error: 'Unauthorized' },
           { status: 403 }
         );
+      }
+      sharedName = folder.name;
+    }
+
+    if (cleanUrl && !sharedName) {
+      try {
+        sharedName = new URL(cleanUrl).hostname;
+      } catch {
+        sharedName = cleanUrl;
       }
     }
 
@@ -172,6 +183,20 @@ export async function POST(req: Request) {
         pinHash,
         maxDownloads: parsedLimit,
         expiresAt: parsedExpiry,
+      },
+    });
+
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'share_created',
+      resource: shareLink.id,
+      resourceName: sharedName,
+      metadata: {
+        type: cleanUrl ? 'url' : folderId ? 'folder' : 'file',
+        pinProtected: shareLink.pinProtected,
+        maxDownloads: parsedLimit,
+        expiresAt: parsedExpiry?.toISOString() || null,
       },
     });
 

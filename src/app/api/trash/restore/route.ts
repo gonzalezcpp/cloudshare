@@ -15,12 +15,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'type (file|folder) and id required' }, { status: 400 });
     }
 
+    const { logActivity } = await import('@/lib/activity');
     if (type === 'file') {
       const file = await prisma.file.findUnique({ where: { id } });
       if (!file || file.ownerId !== session.user.id) {
         return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 });
       }
       await prisma.file.update({ where: { id }, data: { deletedAt: null } });
+      await logActivity({ userId: session.user.id, eventType: 'file_restore', resource: id, resourceName: file.originalName });
     } else {
       const folder = await prisma.folder.findUnique({ where: { id } });
       if (!folder || folder.ownerId !== session.user.id) {
@@ -32,6 +34,7 @@ export async function POST(req: Request) {
         where: { folderId: id, ownerId: session.user.id, deletedAt: { not: null } },
         data: { deletedAt: null },
       });
+      await logActivity({ userId: session.user.id, eventType: 'folder_restore', resource: id, resourceName: folder.name });
     }
 
     return NextResponse.json({ success: true });

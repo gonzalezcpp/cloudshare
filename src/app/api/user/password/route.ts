@@ -104,6 +104,9 @@ export async function PATCH(req: Request) {
       },
     });
 
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({ userId: session.user.id, eventType: 'password_changed' });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Change password error:', error);

@@ -43,6 +43,13 @@ export async function DELETE(
         where: { id: params.id },
         data: { deletedAt: new Date() },
       });
+      const { logActivity } = await import('@/lib/activity');
+      await logActivity({
+        userId: session.user.id,
+        eventType: 'file_trash',
+        resource: file.id,
+        resourceName: file.originalName,
+      });
       return NextResponse.json({ success: true, trashed: true });
     }
 
@@ -69,6 +76,15 @@ export async function DELETE(
       data: {
         storageUsed: Math.max(0, Number(user?.storageUsed || 0) - Number(file.size)),
       },
+    });
+
+    const { logActivity } = await import('@/lib/activity');
+    await logActivity({
+      userId: session.user.id,
+      eventType: 'file_delete',
+      resource: file.id,
+      resourceName: file.originalName,
+      metadata: { permanent: true },
     });
 
     return NextResponse.json({ success: true, trashed: false });
@@ -124,6 +140,26 @@ export async function PATCH(
       where: { id: params.id },
       data: updateData,
     });
+
+    const { logActivity } = await import('@/lib/activity');
+    if (filename && filename !== file.originalName) {
+      await logActivity({
+        userId: session.user.id,
+        eventType: 'file_rename',
+        resource: file.id,
+        resourceName: updatedFile.originalName,
+        metadata: { from: file.originalName, to: updatedFile.originalName },
+      });
+    }
+    if (folderId !== undefined && (folderId || null) !== file.folderId) {
+      await logActivity({
+        userId: session.user.id,
+        eventType: 'file_move',
+        resource: file.id,
+        resourceName: updatedFile.originalName,
+        metadata: { fromFolder: file.folderId, toFolder: folderId || null },
+      });
+    }
 
     return NextResponse.json({
       success: true,

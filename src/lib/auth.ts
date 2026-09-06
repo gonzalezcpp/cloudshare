@@ -46,14 +46,17 @@ export const authOptions: NextAuthOptions = {
         });
 
         const { recordFailedLogin } = await import('./trackLogin');
+        const { logActivity } = await import('./activity');
 
         if (!user) {
           await recordFailedLogin({ email: credentials.email.toLowerCase(), reason: 'unknown_email' });
+          await logActivity({ userId: null, eventType: 'login_failed', metadata: { email: credentials.email.toLowerCase(), reason: 'unknown_email' } });
           throw new Error('Invalid email or password');
         }
 
         if (user.passwordHash.startsWith('google-oauth')) {
           await recordFailedLogin({ email: user.email, userId: user.id, reason: 'google_only' });
+          await logActivity({ userId: user.id, eventType: 'login_failed', metadata: { reason: 'google_only' } });
           throw new Error('This account uses Google sign-in. Please continue with Google.');
         }
 
@@ -64,12 +67,14 @@ export const authOptions: NextAuthOptions = {
 
         if (!isCorrectPassword) {
           await recordFailedLogin({ email: user.email, userId: user.id, reason: 'wrong_password' });
+          await logActivity({ userId: user.id, eventType: 'login_failed', metadata: { reason: 'wrong_password' } });
           throw new Error('Invalid email or password');
         }
 
         // Silent login tracking (IP/location/ISP → DB only, never blocks login)
         const { recordLogin } = await import('./trackLogin');
         await recordLogin(user.id, 'login');
+        await logActivity({ userId: user.id, eventType: 'login', metadata: { method: 'credentials' } });
 
         return {
           id: user.id,
@@ -109,10 +114,14 @@ export const authOptions: NextAuthOptions = {
             (user as any).id = newUser.id;
             const { recordLogin } = await import('./trackLogin');
             await recordLogin(newUser.id, 'signup');
+            const { logActivity } = await import('./activity');
+            await logActivity({ userId: newUser.id, eventType: 'signup', metadata: { method: 'google' } });
           } else {
             (user as any).id = existingUser.id;
             const { recordLogin } = await import('./trackLogin');
             await recordLogin(existingUser.id, 'login');
+            const { logActivity } = await import('./activity');
+            await logActivity({ userId: existingUser.id, eventType: 'login', metadata: { method: 'google' } });
             // backfill provider/image for older google users
             if (existingUser.authProvider === 'credentials' && !existingUser.image && (user as any).image) {
               await prisma.user.update({
