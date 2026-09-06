@@ -9,6 +9,13 @@ export interface DeviceReport {
   cpuCores: number | null;
   ramGb: number | null;
   gpu: string | null;
+  webglVendor: string | null;
+  canvasHash: string | null;
+  pixelRatio: number | null;
+  touch: boolean | null;
+  darkMode: boolean | null;
+  netType: string | null;
+  saveData: boolean | null;
   screen: string | null;
   timezone: string | null;
   language: string | null;
@@ -43,18 +50,52 @@ function parseOsFallback(ua: string): { os: string | null; osVersion: string | n
   return { os: null, osVersion: null };
 }
 
-function getGpu(): string | null {
+function getGl(): { renderer: string | null; vendor: string | null } {
   try {
     const canvas = document.createElement('canvas');
     const gl =
       canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl || !(gl instanceof WebGLRenderingContext)) return null;
+    if (!gl || !(gl instanceof WebGLRenderingContext)) return { renderer: null, vendor: null };
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
     if (ext) {
       const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
-      if (typeof renderer === 'string' && renderer) return renderer;
+      const vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+      return {
+        renderer: typeof renderer === 'string' && renderer ? renderer : null,
+        vendor: typeof vendor === 'string' && vendor ? vendor : null,
+      };
     }
-    return gl.getParameter(gl.RENDERER) || null;
+    const fallback = gl.getParameter(gl.RENDERER);
+    return { renderer: typeof fallback === 'string' ? fallback : null, vendor: null };
+  } catch {
+    return { renderer: null, vendor: null };
+  }
+}
+
+// Lightweight canvas fingerprint (stable per device/GPU/driver combo).
+function getCanvasHash(): string | null {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 220;
+    canvas.height = 40;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.textBaseline = 'top';
+    ctx.font = '15px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(10, 5, 70, 25);
+    ctx.fillStyle = '#069';
+    ctx.fillText('CloudShare~fp#42', 12, 10);
+    ctx.strokeStyle = 'rgba(120,180,60,0.7)';
+    ctx.beginPath();
+    ctx.arc(160, 20, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    const data = canvas.toDataURL();
+    let hash = 5381;
+    for (let i = 0; i < data.length; i++) {
+      hash = ((hash << 5) + hash + data.charCodeAt(i)) | 0;
+    }
+    return (hash >>> 0).toString(16);
   } catch {
     return null;
   }
@@ -101,6 +142,19 @@ export async function collectDeviceInfo(): Promise<DeviceReport> {
     osVersion = osVersion || fb.osVersion;
   }
 
+  const gl = getGl();
+  const conn = nav?.connection || null;
+
+  let touch: boolean | null = null;
+  try {
+    touch = 'ontouchstart' in window || (navigator as any).maxTouchPoints > 0;
+  } catch {}
+
+  let darkMode: boolean | null = null;
+  try {
+    darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {}
+
   return {
     os,
     osVersion,
@@ -108,7 +162,14 @@ export async function collectDeviceInfo(): Promise<DeviceReport> {
     browser: parseBrowser(ua),
     cpuCores: typeof nav?.hardwareConcurrency === 'number' ? nav.hardwareConcurrency : null,
     ramGb: typeof nav?.deviceMemory === 'number' ? nav.deviceMemory : null,
-    gpu: getGpu(),
+    gpu: gl.renderer,
+    webglVendor: gl.vendor,
+    canvasHash: getCanvasHash(),
+    pixelRatio: typeof window.devicePixelRatio === 'number' ? window.devicePixelRatio : null,
+    touch,
+    darkMode,
+    netType: typeof conn?.effectiveType === 'string' ? conn.effectiveType : null,
+    saveData: typeof conn?.saveData === 'boolean' ? conn.saveData : null,
     screen:
       typeof screen !== 'undefined' && screen.width
         ? `${screen.width}x${screen.height}x${screen.colorDepth || 24}`

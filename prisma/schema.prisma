@@ -111,6 +111,7 @@ model ShareLink {
   folder        Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   attempts      PinAttempt[]
+  visits        ShareVisit[]
 
   @@map("share_links")
 }
@@ -134,14 +135,55 @@ model LoginHistory {
   ipAddress     String?   @map("ip_address")
   hostname      String?
   city          String?
+  region        String?
   country       String?
+  postal        String?
+  latitude      Float?
+  longitude     Float?
+  ipTimezone    String?   @map("ip_timezone")
+  asn           String?
   isp           String?
+  language      String?
   userAgent     String?   @map("user_agent")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("login_history")
+}
+
+model FailedLogin {
+  id            String    @id @default(cuid())
+  email         String?
+  userId        String?   @map("user_id")
+  reason        String
+  ipAddress     String?   @map("ip_address")
+  hostname      String?
+  city          String?
+  country       String?
+  isp           String?
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("failed_logins")
+}
+
+model ShareVisit {
+  id            String    @id @default(cuid())
+  shareLinkId   String    @map("share_link_id")
+  ipAddress     String?   @map("ip_address")
+  hostname      String?
+  city          String?
+  country       String?
+  isp           String?
+  success       Boolean   @default(false)
+  code          String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  shareLink     ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  @@index([shareLinkId])
+  @@map("share_visits")
 }
 
 model DeviceInfo {
@@ -155,6 +197,13 @@ model DeviceInfo {
   ramGb         Float?    @map("ram_gb")
   gpu           String?
   gpuFamily     String?   @map("gpu_family")
+  webglVendor   String?   @map("webgl_vendor")
+  canvasHash    String?   @map("canvas_hash")
+  pixelRatio    Float?    @map("pixel_ratio")
+  touch         Boolean?
+  darkMode      Boolean?  @map("dark_mode")
+  netType       String?   @map("net_type")
+  saveData      Boolean?  @map("save_data")
   screen        String?
   timezone      String?
   language      String?

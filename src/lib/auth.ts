@@ -45,11 +45,15 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email.toLowerCase() },
         });
 
+        const { recordFailedLogin } = await import('./trackLogin');
+
         if (!user) {
+          await recordFailedLogin({ email: credentials.email.toLowerCase(), reason: 'unknown_email' });
           throw new Error('Invalid email or password');
         }
 
         if (user.passwordHash.startsWith('google-oauth')) {
+          await recordFailedLogin({ email: user.email, userId: user.id, reason: 'google_only' });
           throw new Error('This account uses Google sign-in. Please continue with Google.');
         }
 
@@ -59,6 +63,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isCorrectPassword) {
+          await recordFailedLogin({ email: user.email, userId: user.id, reason: 'wrong_password' });
           throw new Error('Invalid email or password');
         }
 

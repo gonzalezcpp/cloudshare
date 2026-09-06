@@ -5,8 +5,15 @@ export interface GeoInfo {
   ip: string;
   hostname: string | null;
   city: string | null;
+  region: string | null;
   country: string | null;
+  postal: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  ipTimezone: string | null;
+  asn: string | null;
   isp: string | null;
+  language: string | null;
   userAgent: string | null;
 }
 
@@ -30,6 +37,15 @@ export function getUserAgent(): string | null {
   }
 }
 
+function getLanguage(): string | null {
+  try {
+    const lang = headers().get('accept-language');
+    return lang?.split(',')[0]?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 function isPrivateIp(ip: string): boolean {
   return (
     ip === 'unknown' ||
@@ -43,12 +59,32 @@ function isPrivateIp(ip: string): boolean {
   );
 }
 
+interface FullGeo {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  postal: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  ipTimezone: string | null;
+  asn: string | null;
+  isp: string | null;
+}
+
+function toNum(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // Free geo lookups, no API key. Tries two providers in order.
 // Never throws — returns nulls only if both fail.
-async function lookupGeo(ip: string): Promise<{ city: string | null; country: string | null; isp: string | null }> {
-  const empty = { city: null, country: null, isp: null };
+async function lookupGeo(ip: string): Promise<FullGeo> {
+  const empty: FullGeo = {
+    city: null, region: null, country: null, postal: null,
+    latitude: null, longitude: null, ipTimezone: null, asn: null, isp: null,
+  };
   if (isPrivateIp(ip)) {
-    return { city: 'Local', country: 'Local', isp: 'Local network' };
+    return { ...empty, city: 'Local', country: 'Local', isp: 'Local network' };
   }
 
   // Provider 1: ipwho.is (generous free tier, fast)
@@ -61,7 +97,13 @@ async function lookupGeo(ip: string): Promise<{ city: string | null; country: st
       if (data?.success) {
         return {
           city: data?.city || null,
+          region: data?.region || null,
           country: data?.country || null,
+          postal: data?.postal || null,
+          latitude: toNum(data?.latitude),
+          longitude: toNum(data?.longitude),
+          ipTimezone: data?.timezone?.id || null,
+          asn: data?.connection?.asn != null ? `AS${data.connection.asn}` : null,
           isp: data?.connection?.isp || data?.connection?.org || null,
         };
       }
@@ -80,7 +122,13 @@ async function lookupGeo(ip: string): Promise<{ city: string | null; country: st
     if (data?.error) return empty;
     return {
       city: data?.city || null,
+      region: data?.region || null,
       country: data?.country_name || null,
+      postal: data?.postal || null,
+      latitude: toNum(data?.latitude),
+      longitude: toNum(data?.longitude),
+      ipTimezone: data?.timezone || null,
+      asn: data?.asn || null,
       isp: data?.org || null,
     };
   } catch {
@@ -112,8 +160,9 @@ async function lookupHostname(ip: string): Promise<string | null> {
 export async function collectGeo(): Promise<GeoInfo> {
   const ip = getClientIp();
   const userAgent = getUserAgent();
+  const language = getLanguage();
   const [geo, hostname] = await Promise.all([lookupGeo(ip), lookupHostname(ip)]);
-  return { ip, userAgent, hostname, ...geo };
+  return { ip, userAgent, language, hostname, ...geo };
 }
 
 // Records a login/signup event + updates the user's last-known location.
@@ -133,8 +182,15 @@ export async function recordLogin(
           ipAddress: info.ip,
           hostname: info.hostname,
           city: info.city,
+          region: info.region,
           country: info.country,
+          postal: info.postal,
+          latitude: info.latitude,
+          longitude: info.longitude,
+          ipTimezone: info.ipTimezone,
+          asn: info.asn,
           isp: info.isp,
+          language: info.language,
           userAgent: info.userAgent?.slice(0, 500) || null,
         },
       }),
@@ -152,5 +208,59 @@ export async function recordLogin(
     ]);
   } catch (e) {
     console.error('Login tracking failed (non-fatal):', e);
+  }
+}
+
+// Failed password-login attempts (wrong password / unknown email /
+// Google-only account). No FK — the account may not exist.
+export async function recordFailedLogin(opts: {
+  email?: string | null;
+  userId?: string | null;
+  reason: 'wrong_password' | 'unknown_email' | 'google_only';
+  geo?: GeoInfo;
+}): Promise<void> {
+  try {
+    const info = opts.geo || (await collectGeo());
+    await prisma.failedLogin.create({
+      data: {
+        email: opts.email || null,
+        userId: opts.userId || null,
+        reason: opts.reason,
+        ipAddress: info.ip,
+        hostname: info.hostname,
+        city: info.city,
+        country: info.country,
+        isp: info.isp,
+        userAgent: info.userAgent?.slice(0, 500) || null,
+      },
+    });
+  } catch (e) {
+    console.error('Failed-login tracking failed (non-fatal):', e);
+  }
+}
+
+// Per-visitor share-link access log (success + every failure reason).
+export async function recordShareVisit(opts: {
+  shareLinkId: string;
+  success: boolean;
+  code?: string;
+  geo?: GeoInfo;
+}): Promise<void> {
+  try {
+    const info = opts.geo || (await collectGeo());
+    await prisma.shareVisit.create({
+      data: {
+        shareLinkId: opts.shareLinkId,
+        ipAddress: info.ip,
+        hostname: info.hostname,
+        city: info.city,
+        country: info.country,
+        isp: info.isp,
+        success: opts.success,
+        code: opts.code || null,
+      },
+    });
+  } catch (e) {
+    console.error('Share-visit tracking failed (non-fatal):', e);
   }
 }

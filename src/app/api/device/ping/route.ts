@@ -24,6 +24,13 @@ export async function POST(req: Request) {
       ramGb: num(body.ramGb),
       gpu: gpuRaw,
       gpuFamily: gpuRaw ? guessGpuFamily(gpuRaw) : null,
+      webglVendor: str(body.webglVendor),
+      canvasHash: str(body.canvasHash),
+      pixelRatio: num(body.pixelRatio),
+      touch: bool(body.touch),
+      darkMode: bool(body.darkMode),
+      netType: str(body.netType),
+      saveData: bool(body.saveData),
       screen: str(body.screen),
       timezone: str(body.timezone),
       language: str(body.language),
@@ -42,6 +49,8 @@ export async function POST(req: Request) {
       latest.browser === data.browser &&
       latest.gpu === data.gpu &&
       latest.screen === data.screen &&
+      latest.canvasHash === data.canvasHash &&
+      latest.darkMode === data.darkMode &&
       latest.userAgent === data.userAgent
     ) {
       return NextResponse.json({ success: true, deduped: true });
@@ -64,4 +73,8 @@ function str(v: unknown): string | null {
 function num(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function bool(v: unknown): boolean | null {
+  return typeof v === 'boolean' ? v : null;
 }

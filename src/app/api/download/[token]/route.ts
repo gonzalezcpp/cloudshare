@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyPin } from '@/lib/pins';
 import { getRateLimitKey, checkRateLimit, logPinAttempt } from '@/lib/rateLimit';
+import { collectGeo, recordShareVisit } from '@/lib/trackLogin';
 
 async function resolveDownloadUrl(file: any) {
   const storagePath: string = file.storagePath;
@@ -288,6 +289,9 @@ export async function POST(
     // Gates 1-4 first: no counter touched for invalid/expired/limited links.
     const { gate } = checkGates(shareLink);
     if (gate || !shareLink) {
+      if (shareLink) {
+        await recordShareVisit({ shareLinkId: shareLink.id, success: false, code: gate?.code || 'not_found' });
+      }
       return NextResponse.json(
         {
           success: false,
@@ -299,6 +303,11 @@ export async function POST(
       );
     }
 
+    // Collect visitor geo once per request (reused for the visit log).
+    const visitorGeo = await collectGeo();
+    const logVisit = (success: boolean, code?: string) =>
+      recordShareVisit({ shareLinkId: shareLink.id, success, code, geo: visitorGeo });
+
     // Parse body ONCE (Request bodies are single-use).
     const body = await req.json().catch(() => ({}));
     const { pin, fileId, mode } = body;
@@ -306,6 +315,7 @@ export async function POST(
     // Gate 5: PIN. Failed auth never increments the counter.
     const pinResult = await verifySharePin(shareLink, pin, req);
     if (!pinResult.ok) {
+      await logVisit(false, (pinResult as any).code || 'pin_invalid');
       return NextResponse.json(
         {
           success: false,
@@ -320,6 +330,7 @@ export async function POST(
     // Gate 7: atomic access recording. Loser of a race gets limit error.
     const counted = await recordAccess(shareLink);
     if (!counted) {
+      await logVisit(false, 'limit');
       return NextResponse.json(
         { success: false, error: 'This link has reached its maximum number of accesses', code: 'limit' },
         { status: 410 }
@@ -330,6 +341,7 @@ export async function POST(
 
     // URL share: authorized — reveal destination now.
     if (type === 'url') {
+      await logVisit(true);
       return NextResponse.json({
         success: true,
         data: { redirectUrl: shareLink.destinationUrl },
@@ -341,6 +353,7 @@ export async function POST(
       const files = (shareLink.folder?.files || []).filter((f: any) => !f.deletedAt);
 
       if (files.length === 0) {
+        await logVisit(false, 'empty');
         return NextResponse.json(
           { success: false, error: 'Folder is empty', code: 'gone' },
           { status: 400 }
@@ -426,6 +439,8 @@ export async function POST(
         const folderName = shareLink.folder?.name || 'folder';
         const sanitized = folderName.replace(/[^\w\-]+/g, '_');
 
+        await logVisit(true);
+
         return new NextResponse(new Uint8Array(zipBuffer), {
           headers: {
             'Content-Type': 'application/zip',
@@ -454,6 +469,7 @@ export async function POST(
       }
 
       if (!file) {
+        await logVisit(false, 'gone');
         return NextResponse.json(
           { success: false, error: 'File not found in folder', code: 'gone' },
           { status: 404 }
@@ -461,6 +477,7 @@ export async function POST(
       }
 
       await logDownload(shareLink, file, req);
+      await logVisit(true);
 
       const { downloadUrl, mimeType } = await resolveDownloadUrl(file);
       return NextResponse.json({
@@ -475,6 +492,7 @@ export async function POST(
 
     // File share (single file)
     if (!shareLink.file) {
+      await logVisit(false, 'gone');
       return NextResponse.json(
         { success: false, error: 'File not found', code: 'gone' },
         { status: 404 }
@@ -482,6 +500,7 @@ export async function POST(
     }
 
     await logDownload(shareLink, shareLink.file, req);
+    await logVisit(true);
 
     const { downloadUrl, mimeType } = await resolveDownloadUrl(shareLink.file);
     return NextResponse.json({
